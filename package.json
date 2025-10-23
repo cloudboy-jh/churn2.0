@@ -1,0 +1,41 @@
+{
+  "name": "churn",
+  "version": "2.0.0",
+  "description": "AI-assisted developer tool for maintaining and refactoring codebases",
+  "type": "module",
+  "bin": {
+    "churn": "./dist/index.js"
+  },
+  "scripts": {
+    "dev": "bun run src/index.tsx",
+    "build": "bun build src/index.tsx --outdir dist --target node",
+    "compile": "bun build src/index.tsx --compile --outfile churn",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.31.0",
+    "@google/generative-ai": "^0.21.0",
+    "@lobehub/icons": "^2.43.1",
+    "chalk": "^5.3.0",
+    "commander": "^12.0.0",
+    "fast-glob": "^3.3.2",
+    "fs-extra": "^11.2.0",
+    "gradient-string": "^2.0.2",
+    "ink": "^5.0.1",
+    "ink-select-input": "^6.0.0",
+    "ink-spinner": "^5.0.0",
+    "ink-text-input": "^6.0.0",
+    "ollama": "^0.5.9",
+    "openai": "^4.67.0",
+    "react": "^18.3.1",
+    "react-devtools-core": "^7.0.1",
+    "simple-git": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.1",
+    "bun-types": "^1.1.0",
+    "typescript": "^5.6.0"
+  }
+}

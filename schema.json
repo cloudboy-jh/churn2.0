@@ -1,0 +1,164 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Churn Report",
+  "description": "Schema for churn-reports.json - Churn 2.0 analysis output",
+  "type": "object",
+  "required": ["version", "repository", "analysis", "generatedAt"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Churn version",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "repository": {
+      "type": "object",
+      "required": ["name", "branch", "path"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Repository name"
+        },
+        "branch": {
+          "type": "string",
+          "description": "Current git branch"
+        },
+        "path": {
+          "type": "string",
+          "description": "Absolute path to repository"
+        },
+        "remote": {
+          "type": "string",
+          "description": "Git remote URL (if configured)"
+        }
+      }
+    },
+    "analysis": {
+      "type": "object",
+      "required": ["summary", "suggestions", "metadata"],
+      "properties": {
+        "summary": {
+          "type": "object",
+          "required": ["filesAnalyzed", "suggestions", "categories", "duration"],
+          "properties": {
+            "filesAnalyzed": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of files analyzed"
+            },
+            "suggestions": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total number of suggestions"
+            },
+            "categories": {
+              "type": "object",
+              "description": "Count of suggestions by category",
+              "patternProperties": {
+                "^(refactor|bug|optimization|style|documentation)$": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "duration": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Analysis duration in milliseconds"
+            }
+          }
+        },
+        "suggestions": {
+          "type": "array",
+          "description": "List of all suggestions",
+          "items": {
+            "type": "object",
+            "required": ["file", "category", "severity", "title", "description", "suggestion"],
+            "properties": {
+              "file": {
+                "type": "string",
+                "description": "Relative path to file"
+              },
+              "category": {
+                "type": "string",
+                "enum": ["refactor", "bug", "optimization", "style", "documentation"],
+                "description": "Suggestion category"
+              },
+              "severity": {
+                "type": "string",
+                "enum": ["low", "medium", "high"],
+                "description": "Issue severity"
+              },
+              "title": {
+                "type": "string",
+                "description": "Brief title of the suggestion"
+              },
+              "description": {
+                "type": "string",
+                "description": "Detailed description of the issue"
+              },
+              "suggestion": {
+                "type": "string",
+                "description": "Recommended action"
+              },
+              "code": {
+                "type": "object",
+                "description": "Code change details (optional)",
+                "required": ["before", "after"],
+                "properties": {
+                  "before": {
+                    "type": "string",
+                    "description": "Original code snippet"
+                  },
+                  "after": {
+                    "type": "string",
+                    "description": "Improved code snippet"
+                  },
+                  "startLine": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Starting line number"
+                  },
+                  "endLine": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Ending line number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "required": ["timestamp", "model", "provider", "mode"],
+          "properties": {
+            "timestamp": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Analysis start time"
+            },
+            "model": {
+              "type": "string",
+              "description": "AI model identifier"
+            },
+            "provider": {
+              "type": "string",
+              "enum": ["anthropic", "openai", "google", "ollama"],
+              "description": "AI provider"
+            },
+            "mode": {
+              "type": "string",
+              "enum": ["full", "staged", "files"],
+              "description": "Analysis mode"
+            }
+          }
+        }
+      }
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Report generation timestamp"
+    }
+  }
+}
