@@ -281,10 +281,18 @@ function App({ command, context, askQuestion }: AppProps) {
   }
 
   if (phase === "complete") {
+    // Exit cleanly after a short delay to show completion message
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        process.exit(0);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }, []);
+
     return (
       <Box flexDirection="column">
         <Logo subtitle="AI-assisted code maintenance" />
-        <Box>
+        <Box marginTop={1}>
           <Text color="#a6e3a1">{symbols.tick} Complete</Text>
         </Box>
       </Box>
@@ -328,6 +336,20 @@ program
 program
   .command("run")
   .description("Run code analysis")
+  .option("-s, --staged", "Analyze only staged files")
+  .option("-f, --files <files...>", "Analyze specific files")
+  .action((options) => {
+    const context: AnalysisContext = {
+      mode: options.staged ? "staged" : options.files ? "files" : "full",
+      files: options.files,
+    };
+
+    render(<App command="run" context={context} />);
+  });
+
+program
+  .command("start")
+  .description("Start interactive code analysis (alias for 'run')")
   .option("-s, --staged", "Analyze only staged files")
   .option("-f, --files <files...>", "Analyze specific files")
   .action((options) => {

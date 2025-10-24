@@ -1,11 +1,34 @@
 {
-  "name": "churn",
-  "version": "2.0.0",
+  "name": "churn-cli",
+  "version": "2.0.1",
   "description": "AI-assisted developer tool for maintaining and refactoring codebases",
   "type": "module",
+  "author": "cloudboyjh1",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cloudboyjh1/churn2.0.git"
+  },
+  "keywords": [
+    "ai",
+    "code-analysis",
+    "refactoring",
+    "cli",
+    "developer-tools",
+    "code-quality",
+    "claude",
+    "gpt",
+    "gemini",
+    "ollama"
+  ],
   "bin": {
     "churn": "./dist/index.js"
   },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "dev": "bun run src/index.tsx",
     "build": "bun build src/index.tsx --outdir dist --target node",

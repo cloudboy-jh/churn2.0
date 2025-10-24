@@ -1,0 +1,37 @@
+# Source files
+src/
+
+# Development files
+*.log
+*.local
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build artifacts
+churn
+churn.exe
+
+# Project specific
+.churn/
+node_modules/
+
+# Git
+.git/
+.gitignore
+
+# Documentation that doesn't need to be in the package
+EXAMPLES.md
+CLAUDE.md
+
+# TypeScript
+tsconfig.json
+tsconfig.tsbuildinfo
+
+# Bun
+bun.lockb
