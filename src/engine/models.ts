@@ -243,29 +243,38 @@ async function sendOllamaPrompt(
 ): Promise<string> {
   const prompt = messages.map((m) => `${m.role}: ${m.content}`).join("\n\n");
 
-  if (onStream) {
-    let fullContent = "";
-    const stream = await client.generate({
-      model,
-      prompt,
-      stream: true,
-    });
+  try {
+    if (onStream) {
+      let fullContent = "";
+      const stream = await client.generate({
+        model,
+        prompt,
+        stream: true,
+      });
 
-    for await (const chunk of stream) {
-      if (chunk.response) {
-        fullContent += chunk.response;
-        onStream({ content: chunk.response, done: chunk.done });
+      for await (const chunk of stream) {
+        if (chunk.response) {
+          fullContent += chunk.response;
+          onStream({ content: chunk.response, done: chunk.done });
+        }
       }
+
+      return fullContent;
+    } else {
+      const response = await client.generate({
+        model,
+        prompt,
+      });
+
+      return response.response;
     }
-
-    return fullContent;
-  } else {
-    const response = await client.generate({
-      model,
-      prompt,
-    });
-
-    return response.response;
+  } catch (error: any) {
+    if (error.status_code === 404 || error.message?.includes("not found")) {
+      throw new Error(
+        `Ollama model '${model}' not found. Please pull the model first:\n  ollama pull ${model}\n\nOr select a different model with: churn switch-model`,
+      );
+    }
+    throw error;
   }
 }
 

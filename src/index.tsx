@@ -102,17 +102,22 @@ function App({ command, context, askQuestion }: AppProps) {
       // For ask command, check if we have model config
       if (complete) {
         const defaultModel = await getDefaultModel();
-        setModelConfig({
-          provider: defaultModel.provider,
-          model: defaultModel.model,
-        });
+        if (defaultModel) {
+          setModelConfig({
+            provider: defaultModel.provider,
+            model: defaultModel.model,
+          });
 
-        if (askQuestion) {
-          // Direct question provided as argument
-          setPhase("ask");
+          if (askQuestion) {
+            // Direct question provided as argument
+            setPhase("ask");
+          } else {
+            // Need to prompt for question
+            setPhase("ask-input");
+          }
         } else {
-          // Need to prompt for question
-          setPhase("ask-input");
+          // Model config missing, go to setup
+          setPhase("model");
         }
       } else {
         // Need to setup model first
@@ -122,11 +127,16 @@ function App({ command, context, askQuestion }: AppProps) {
       // For run, load model if available, otherwise setup
       if (complete) {
         const defaultModel = await getDefaultModel();
-        setModelConfig({
-          provider: defaultModel.provider,
-          model: defaultModel.model,
-        });
-        setPhase("confirm");
+        if (defaultModel) {
+          setModelConfig({
+            provider: defaultModel.provider,
+            model: defaultModel.model,
+          });
+          setPhase("confirm");
+        } else {
+          // Model config missing, go to setup
+          setPhase("model");
+        }
       } else {
         setPhase("model");
       }
@@ -138,8 +148,12 @@ function App({ command, context, askQuestion }: AppProps) {
     if (command === "model" || command === "switch-model") {
       setPhase("complete");
     } else if (command === "run") {
-      // First time setup - show success and exit cleanly
-      setPhase("complete");
+      // After model setup, continue to confirm phase if context is available
+      if (context) {
+        setPhase("confirm");
+      } else {
+        setPhase("complete");
+      }
     } else if (command === "ask") {
       // After model setup, go to ask input or direct ask
       if (askQuestion) {

@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Churn 2.0 is a local-first CLI application for AI-assisted code maintenance and refactoring. It analyzes codebases using multiple AI providers (Anthropic Claude, OpenAI GPT, Google Gemini, or local Ollama) and provides interactive review of suggestions.
 
+**Published as**: `churn-cli` on npm (https://www.npmjs.com/package/churn-cli)
+**Current Version**: 2.0.3
+**Repository**: https://github.com/cloudboyjh1/churn2.0
+
 ## Build & Development Commands
 
 ### Setup
@@ -67,12 +71,13 @@ cd /path/to/test-repo
 1. User runs command → CLI parser (`index.tsx`)
 2. App component routes to appropriate phase based on command
 3. Repository detection (`git.ts`)
-4. Model/API key loading (`config.ts`)
-5. **NEW: Confirmation screen** (`ConfirmRun.tsx`) - user must confirm before scan starts
-6. Analysis execution (`analysis.ts` + `models.ts`)
-7. Report generation (`reports.ts`) → `.churn/reports/churn-reports.json`
-8. Interactive review (`ReviewPanel.tsx`)
-9. Export (`ExportPanel.tsx`) → `.churn/patches/`
+4. **First-run check** - If no model configured, show `ModelSelect.tsx`
+5. Model/API key loading or setup (`config.ts`)
+6. **Confirmation screen** (`ConfirmRun.tsx`) - user must press Enter to start or Esc to cancel
+7. Analysis execution (`analysis.ts` + `models.ts`) with real-time streaming
+8. Report generation (`reports.ts`) → `.churn/reports/churn-reports.json`
+9. Interactive review (`ReviewPanel.tsx`) - user accepts/rejects suggestions
+10. Export (`ExportPanel.tsx`) → `.churn/patches/` (patches, JSON, Markdown)
 
 ## Key Technical Details
 
@@ -165,6 +170,7 @@ All UI elements use the coral theme centered on `#ff6f54`:
 - Individual file analysis failures should not crash entire analysis
 - Log errors but continue processing remaining files
 - API failures should display user-friendly error messages
+- Ollama model not found: Shows helpful message with `ollama pull` command
 
 ### Performance Considerations
 - Files analyzed sequentially (not parallel) to respect API rate limits

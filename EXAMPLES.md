@@ -5,15 +5,20 @@
 ### First Time Setup
 
 ```bash
-# Install dependencies
-bun install
+# Install globally
+npm install -g churn-cli
 
-# Compile to binary
-bun run compile
+# Or with Bun (faster)
+bun install -g churn-cli
 
-# Run in your project
+# Navigate to your project
 cd ~/your-project
-churn run
+
+# Start for the first time
+churn start
+# - Selects AI provider and model
+# - Enters API key
+# - Saves configuration to ~/.churn/config.json
 ```
 
 ### Daily Usage
@@ -53,13 +58,19 @@ churn model
 churn run
 ```
 
-### Authentication
+### Switching Models
 
 ```bash
-# GitHub authentication for future features
-churn login
-# > Visit: https://github.com/login/device
-# > Enter code: XXXX-XXXX
+# Change to a different model
+churn switch-model
+# Or
+churn model
+
+# Switch to Ollama for free local analysis
+churn model
+# > Select: Ollama
+# > Select: llama3.3:70b
+# > Base URL: http://localhost:11434 (default)
 ```
 
 ### Export Formats

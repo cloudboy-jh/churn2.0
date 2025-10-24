@@ -56,6 +56,12 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
     }
   });
 
+  useInput(() => {
+    if (suggestions.length === 0) {
+      onComplete([]);
+    }
+  });
+
   if (suggestions.length === 0) {
     return (
       <Box flexDirection="column" paddingY={1}>

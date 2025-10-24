@@ -3,8 +3,23 @@
 ## Installation
 
 ```bash
-# Clone and build
-git clone <repo-url> churn2.0
+# Quick install (recommended)
+npm install -g churn-cli
+
+# Or with Bun (faster)
+bun install -g churn-cli
+
+# Or with pnpm
+pnpm install -g churn-cli
+
+# Or with yarn
+yarn global add churn-cli
+```
+
+### From Source (Development)
+
+```bash
+git clone https://github.com/cloudboyjh1/churn2.0.git
 cd churn2.0
 bun install
 bun run compile
@@ -18,28 +33,34 @@ bun run compile
 # Navigate to your project
 cd ~/your-awesome-project
 
-# Run Churn
-/path/to/churn run
+# Start Churn
+churn start
 
-# Follow the prompts:
-# 1. Select AI provider (e.g., Anthropic)
-# 2. Select model (e.g., Claude 3.5 Sonnet)
-# 3. Enter API key (stored securely in ~/.churn/config.json)
-# 4. Watch live analysis progress
-# 5. Review suggestions interactively
-# 6. Accept/reject with arrow keys and Space
-# 7. Export results
+# First-time setup flow:
+# 1. Welcome message and available commands
+# 2. Select AI provider (Anthropic, OpenAI, Google, or Ollama)
+# 3. Select specific model (e.g., Claude Sonnet 4.5)
+# 4. Enter API key (stored securely in ~/.churn/config.json)
+# 5. Confirmation screen shows files to analyze
+# 6. Press Enter to start or Esc to cancel
+# 7. Watch live analysis progress with streaming output
+# 8. Review suggestions interactively
+# 9. Accept/reject with arrow keys and Space
+# 10. Export results as patches and reports
 ```
 
 ## Essential Commands
 
 ```bash
-churn run              # Analyze entire repository
+churn start            # Start interactive analysis (recommended)
+churn run              # Same as start - analyze entire repository
 churn run --staged     # Analyze staged files only
+churn run --files src/**/*.ts  # Analyze specific files
 churn review           # Review last analysis
 churn export           # Export last analysis
 churn model            # Change AI model
-churn login            # Authenticate with GitHub
+churn switch-model     # Same as model
+churn ask "question"   # Ask one-off question about code
 ```
 
 ## Quick Reference

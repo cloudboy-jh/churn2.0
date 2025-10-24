@@ -26,10 +26,26 @@ AI-assisted developer tool for maintaining and refactoring codebases. A modern, 
 
 ## Installation
 
-### Using Bun (recommended)
+### Quick Install (Recommended)
 
 ```bash
-git clone <repository-url>
+# Using npm
+npm install -g churn-cli
+
+# Using Bun (faster)
+bun install -g churn-cli
+
+# Using pnpm
+pnpm install -g churn-cli
+
+# Using yarn
+yarn global add churn-cli
+```
+
+### From Source (For Development)
+
+```bash
+git clone https://github.com/cloudboyjh1/churn2.0.git
 cd churn2.0
 bun install
 bun run compile
@@ -37,31 +53,38 @@ bun run compile
 
 This creates a single executable binary `churn` or `churn.exe`.
 
-### Using npm
-
-```bash
-npm install -g churn
-```
-
 ## Quick Start
 
 ```bash
 # Navigate to your project
 cd your-project
 
-# Run analysis (will prompt for model selection)
+# Start interactive analysis (recommended for first-time users)
+churn start
+
+# Or use run (same as start)
 churn run
 
-# Or specify a mode
+# Analyze specific modes
 churn run --staged        # Analyze staged files only
 churn run --files src/**  # Analyze specific files
 ```
 
+### First-Run Experience
+
+On first use, Churn will:
+1. Show welcome message and available commands
+2. Prompt you to select an AI provider (Anthropic, OpenAI, Google, or Ollama)
+3. Ask for API key (if using cloud provider)
+4. Save your selection as the default
+5. Show confirmation screen before analyzing
+6. Begin analysis after you press Enter
+
 ## Commands
 
-### `churn run`
+### `churn start` / `churn run`
 
-Run code analysis on your repository.
+Run code analysis on your repository. Both commands do the same thing.
 
 **Options:**
 - `-s, --staged` - Analyze only staged files
@@ -71,10 +94,12 @@ Run code analysis on your repository.
 1. Detects repository and project type
 2. Prompts for model selection (if not configured)
 3. Shows confirmation screen with file count and model details
-4. User confirms to start analysis
+4. User presses Enter to start or Esc to cancel
 5. Analyzes files with real-time progress
 6. Generates `churn-reports.json` in `.churn/reports/`
 7. Opens interactive review panel
+8. User accepts/rejects suggestions
+9. Export patches and reports
 
 ### `churn model`
 

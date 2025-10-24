@@ -1,6 +1,6 @@
 {
   "name": "churn-cli",
-  "version": "2.0.1",
+  "version": "2.0.3",
   "description": "AI-assisted developer tool for maintaining and refactoring codebases",
   "type": "module",
   "author": "cloudboyjh1",
@@ -56,6 +56,7 @@
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
+    "@types/gradient-string": "^1.1.6",
     "@types/node": "^22.0.0",
     "@types/react": "^18.3.1",
     "bun-types": "^1.1.0",

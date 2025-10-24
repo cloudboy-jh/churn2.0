@@ -123,20 +123,17 @@ export async function setApiKey(
   await saveConfig(config);
 }
 
-// Get default model
-export async function getDefaultModel(): Promise<ChurnConfig["defaultModel"]> {
+// Get default model (returns undefined if not configured)
+export async function getDefaultModel(): Promise<
+  ChurnConfig["defaultModel"] | undefined
+> {
   const config = await loadConfig();
-  return (
-    config.defaultModel || {
-      provider: "anthropic",
-      model: "claude-3-5-sonnet-20241022",
-    }
-  );
+  return config.defaultModel;
 }
 
 // Set default model
 export async function setDefaultModel(
-  provider: ChurnConfig["defaultModel"]["provider"],
+  provider: "anthropic" | "openai" | "google" | "ollama",
   model: string,
 ): Promise<void> {
   const config = await loadConfig();
