@@ -1,11 +1,11 @@
 import chalk from "chalk";
 import gradient from "gradient-string";
 
-// Churn 2.0 Theme - Centered on #ff6f54 (coral)
+// Churn 2.0 Theme - Centered on #ff5656 (vibrant red)
 export const colors = {
   background: "#1b1b1b",
-  primary: "#ff6f54", // Main coral accent
-  secondary: "#ff9b85", // Lighter coral
+  primary: "#ff5656", // Main vibrant red accent
+  secondary: "#ff8585", // Lighter red
   text: "#f2e9e4",
   gray: "#a6adc8",
   info: "#8ab4f8",
@@ -29,7 +29,7 @@ export const theme = {
 } as const;
 
 // Gradient for logo and progress elements
-export const coralGradient = gradient([colors.primary, colors.secondary]);
+export const redGradient = gradient([colors.primary, colors.secondary]);
 
 // Box drawing characters for borders
 export const box = {

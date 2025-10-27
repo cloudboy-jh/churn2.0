@@ -1,6 +1,6 @@
 import React from "react";
 import { Text, Box } from "ink";
-import { coralGradient, theme } from "../theme.js";
+import { redGradient, theme } from "../theme.js";
 
 const LOGO = ` ▄████████    ▄█    █▄    ███    █▄     ▄████████ ███▄▄▄▄
 ███    ███   ███    ███   ███    ███   ███    ███ ███▀▀▀██▄
@@ -20,7 +20,7 @@ interface LogoProps {
 export function Logo({ subtitle, message }: LogoProps) {
   return (
     <Box flexDirection="column" marginBottom={1}>
-      <Text>{coralGradient(LOGO)}</Text>
+      <Text>{redGradient(LOGO)}</Text>
       {subtitle && (
         <Box marginTop={1}>
           <Text color="#a6adc8">{subtitle}</Text>

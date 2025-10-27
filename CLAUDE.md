@@ -121,11 +121,11 @@ See `schema.json` for full structure. Key fields:
 
 ## Visual Design System
 
-All UI elements use the coral theme centered on `#ff6f54`:
+All UI elements use the vibrant red theme centered on `#ff5656`:
 
 **Colors** (defined in `src/theme.ts`):
-- Primary: `#ff6f54` (coral) - Progress bars, highlights, logo
-- Secondary: `#ff9b85` (light coral) - Gradients
+- Primary: `#ff5656` (vibrant red) - Progress bars, highlights, logo
+- Secondary: `#ff8585` (light red) - Gradients
 - Text: `#f2e9e4` (warm white)
 - Gray: `#a6adc8` (muted purple-gray)
 - Success: `#a6e3a1`, Info: `#8ab4f8`, Warning: `#f9e2af`, Error: `#f38ba8`

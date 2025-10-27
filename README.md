@@ -256,11 +256,11 @@ your-project/
 
 ## Theme
 
-Churn 2.0 is built around a coral aesthetic centered on **#ff6f54**.
+Churn 2.0 is built around a vibrant red aesthetic centered on **#ff5656**.
 
 **Color Palette:**
-- Primary: `#ff6f54` - Main coral accent
-- Secondary: `#ff9b85` - Lighter coral
+- Primary: `#ff5656` - Main vibrant red accent
+- Secondary: `#ff8585` - Lighter red
 - Text: `#f2e9e4` - Warm off-white
 - Gray: `#a6adc8` - Muted purple-gray
 - Info: `#8ab4f8` - Soft blue
