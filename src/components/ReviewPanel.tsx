@@ -78,6 +78,12 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
   }
 
   if (viewMode === "list") {
+    // Calculate viewport window (show 10 items at a time)
+    const windowSize = 10;
+    const windowStart = Math.floor(currentIndex / windowSize) * windowSize;
+    const windowEnd = Math.min(windowStart + windowSize, suggestions.length);
+    const visibleSuggestions = suggestions.slice(windowStart, windowEnd);
+
     return (
       <Box flexDirection="column" paddingY={1}>
         <Box marginBottom={1}>
@@ -94,7 +100,8 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
           borderStyle="single"
           borderColor="#ff9b85"
         >
-          {suggestions.slice(0, 10).map((suggestion, i) => {
+          {visibleSuggestions.map((suggestion, localIdx) => {
+            const i = windowStart + localIdx;
             const isSelected = i === currentIndex;
             const isAccepted = acceptedSuggestions.has(i);
 
@@ -120,10 +127,12 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
             );
           })}
 
-          {suggestions.length > 10 && (
-            <Box paddingX={1}>
+          {/* Scroll indicator */}
+          {suggestions.length > windowSize && (
+            <Box paddingX={1} marginTop={1}>
               <Text color="#a6adc8">
-                ... and {suggestions.length - 10} more
+                Showing {windowStart + 1}-{windowEnd} of {suggestions.length}
+                {windowEnd < suggestions.length && " • Scroll down for more"}
               </Text>
             </Box>
           )}

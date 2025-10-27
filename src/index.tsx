@@ -40,9 +40,10 @@ interface AppProps {
   command: "run" | "model" | "switch-model" | "ask";
   context?: AnalysisContext;
   askQuestion?: string;
+  concurrency?: number;
 }
 
-function App({ command, context, askQuestion }: AppProps) {
+function App({ command, context, askQuestion, concurrency }: AppProps) {
   const [phase, setPhase] = useState<AppPhase>("init");
   const [repoSummary, setRepoSummary] = useState<string>("");
   const [modelConfig, setModelConfig] = useState<ModelConfig | null>(null);
@@ -56,6 +57,9 @@ function App({ command, context, askQuestion }: AppProps) {
   const [setupComplete, setSetupComplete] = useState<boolean>(false);
   const [showCommandsList, setShowCommandsList] = useState<boolean>(false);
   const [fileCount, setFileCount] = useState<number>(0);
+  const [concurrencyLimit, setConcurrencyLimit] = useState<number | undefined>(
+    concurrency,
+  );
 
   useEffect(() => {
     initialize();
@@ -265,6 +269,7 @@ function App({ command, context, askQuestion }: AppProps) {
           modelConfig={modelConfig}
           context={context}
           onComplete={handleRunComplete}
+          concurrency={concurrencyLimit}
         />
       </Box>
     );
@@ -324,7 +329,7 @@ program
   .description(
     "AI-assisted developer tool for maintaining and refactoring codebases",
   )
-  .version("2.0.0");
+  .version("2.0.4");
 
 program
   .command("model")
@@ -352,13 +357,29 @@ program
   .description("Run code analysis")
   .option("-s, --staged", "Analyze only staged files")
   .option("-f, --files <files...>", "Analyze specific files")
+  .option(
+    "-c, --concurrency <number>",
+    "Number of files to analyze in parallel (1-50)",
+    parseInt,
+  )
   .action((options) => {
     const context: AnalysisContext = {
       mode: options.staged ? "staged" : options.files ? "files" : "full",
       files: options.files,
     };
 
-    render(<App command="run" context={context} />);
+    // Validate concurrency if provided
+    if (options.concurrency !== undefined) {
+      const concurrency = options.concurrency;
+      if (isNaN(concurrency) || concurrency < 1 || concurrency > 50) {
+        console.error("Error: Concurrency must be a number between 1 and 50");
+        process.exit(1);
+      }
+    }
+
+    render(
+      <App command="run" context={context} concurrency={options.concurrency} />,
+    );
   });
 
 program
@@ -366,13 +387,29 @@ program
   .description("Start interactive code analysis (alias for 'run')")
   .option("-s, --staged", "Analyze only staged files")
   .option("-f, --files <files...>", "Analyze specific files")
+  .option(
+    "-c, --concurrency <number>",
+    "Number of files to analyze in parallel (1-50)",
+    parseInt,
+  )
   .action((options) => {
     const context: AnalysisContext = {
       mode: options.staged ? "staged" : options.files ? "files" : "full",
       files: options.files,
     };
 
-    render(<App command="run" context={context} />);
+    // Validate concurrency if provided
+    if (options.concurrency !== undefined) {
+      const concurrency = options.concurrency;
+      if (isNaN(concurrency) || concurrency < 1 || concurrency > 50) {
+        console.error("Error: Concurrency must be a number between 1 and 50");
+        process.exit(1);
+      }
+    }
+
+    render(
+      <App command="run" context={context} concurrency={options.concurrency} />,
+    );
   });
 
 program

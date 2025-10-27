@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Churn 2.0 is a local-first CLI application for AI-assisted code maintenance and refactoring. It analyzes codebases using multiple AI providers (Anthropic Claude, OpenAI GPT, Google Gemini, or local Ollama) and provides interactive review of suggestions.
 
 **Published as**: `churn-cli` on npm (https://www.npmjs.com/package/churn-cli)
-**Current Version**: 2.0.3
+**Current Version**: 2.0.4 (Performance & Cost Optimization Update)
 **Repository**: https://github.com/cloudboyjh1/churn2.0
 
 ## Build & Development Commands
@@ -47,10 +47,10 @@ cd /path/to/test-repo
 ### Layer Structure
 
 **Engine Layer** (`src/engine/`) - Business logic, no UI dependencies:
-- `config.ts` - Local storage management for global/project configuration
+- `config.ts` - Local storage management for global/project configuration, concurrency settings
 - `git.ts` - Repository detection, file scanning, Git operations
 - `models.ts` - Unified interface for all AI providers with streaming support
-- `analysis.ts` - File scanning, parallel analysis, suggestion categorization
+- `analysis.ts` - File scanning, **parallel analysis with caching**, suggestion categorization, retry logic
 - `reports.ts` - JSON report schema, export to multiple formats
 
 **UI Layer** (`src/components/`) - Ink components for terminal rendering:
@@ -88,13 +88,16 @@ cd /path/to/test-repo
 - Path alias: `@/*` maps to `./src/*`
 - Target: ES2022
 
-### File Scanning Strategy
+### File Scanning & Analysis Strategy
 - Uses `fast-glob` for pattern matching
-- Default exclusions: `node_modules`, `.git`, `dist`, `build`, `.churn`, lock files, minified files
+- **Expanded exclusions** (v2.0.4): `node_modules`, `.git`, `dist`, `build`, `.churn`, lock files, minified files, test files, type definitions (`.d.ts`), vendor code, generated code
 - Three modes:
   - `full`: Scan entire repository
-  - `staged`: Only analyze files in Git staging area
+  - `staged`: Only analyze files in Git staging area (80-90% cost savings)
   - `files`: Specific files/patterns provided via CLI
+- **Parallel processing**: Files analyzed concurrently (5-20 files at once based on provider)
+- **Smart caching**: Content-based SHA-256 hashing, 30-day cache, ~70% savings on reruns
+- **File prioritization**: Analyzed in smart order based on model language familiarity, file size, and importance
 
 ### AI Model Integration
 - Streaming responses supported for real-time UI updates

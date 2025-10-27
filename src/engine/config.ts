@@ -16,6 +16,7 @@ export interface ChurnConfig {
   preferences?: {
     autoApply?: boolean;
     verbose?: boolean;
+    concurrency?: number;
   };
 }
 
@@ -169,4 +170,45 @@ export async function isModelConfigured(): Promise<boolean> {
 // Check if setup is complete (model configured)
 export async function isSetupComplete(): Promise<boolean> {
   return await isModelConfigured();
+}
+
+// Get concurrency limit with smart defaults by provider
+export async function getConcurrency(
+  provider?: "anthropic" | "openai" | "google" | "ollama",
+): Promise<number> {
+  const config = await loadConfig();
+  const userSetting = config.preferences?.concurrency;
+
+  // If user has set a preference, use it
+  if (userSetting !== undefined) {
+    return Math.max(1, Math.min(50, userSetting)); // Clamp to 1-50
+  }
+
+  // Smart defaults based on provider
+  if (provider) {
+    const providerDefaults: Record<string, number> = {
+      ollama: 20, // Local, can handle more
+      openai: 10, // Generous rate limits
+      anthropic: 8, // More conservative
+      google: 10, // Good limits
+    };
+    return providerDefaults[provider] || 10;
+  }
+
+  // Default fallback
+  return 10;
+}
+
+// Set concurrency limit
+export async function setConcurrency(value: number): Promise<void> {
+  if (value < 1 || value > 50) {
+    throw new Error("Concurrency must be between 1 and 50");
+  }
+
+  const config = await loadConfig();
+  if (!config.preferences) {
+    config.preferences = {};
+  }
+  config.preferences.concurrency = value;
+  await saveConfig(config);
 }
