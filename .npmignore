@@ -26,8 +26,10 @@ node_modules/
 .gitignore
 
 # Documentation that doesn't need to be in the package
-EXAMPLES.md
-CLAUDE.md
+docs/development/
+docs/assets/
+install-bun.ps1
+schema.json
 
 # TypeScript
 tsconfig.json

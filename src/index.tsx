@@ -329,7 +329,7 @@ program
   .description(
     "AI-assisted developer tool for maintaining and refactoring codebases",
   )
-  .version("2.0.4");
+  .version("2.0.5");
 
 program
   .command("model")

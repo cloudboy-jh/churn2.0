@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Churn 2.0 is a local-first CLI application for AI-assisted code maintenance and refactoring. It analyzes codebases using multiple AI providers (Anthropic Claude, OpenAI GPT, Google Gemini, or local Ollama) and provides interactive review of suggestions.
 
 **Published as**: `churn-cli` on npm (https://www.npmjs.com/package/churn-cli)
-**Current Version**: 2.0.4 (Performance & Cost Optimization Update)
+**Current Version**: 2.0.5 (Repository Cleanup & Color Theme Update)
 **Repository**: https://github.com/cloudboyjh1/churn2.0
 
 ## Build & Development Commands

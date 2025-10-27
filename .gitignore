@@ -4,5 +4,14 @@ dist/
 .churn/
 *.log
 .DS_Store
+
+# Compiled binaries
 churn
 churn.exe
+
+# Package managers
+package-lock.json
+bun.lockb
+
+# Documentation builds
+docs/_build/
