@@ -1,6 +1,6 @@
 <div align="center">
 
-![Churn](./assets/churn-header.png)
+![Churn](./assets/churnreadme.png)
 
 **AI-powered code analysis for modern developers**
 
