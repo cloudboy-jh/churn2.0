@@ -1,28 +1,185 @@
-# Churn 2.0
+<div align="center">
 
-AI-assisted developer tool for maintaining and refactoring codebases. A modern, local-first CLI that brings intelligent code analysis directly to your terminal.
+![Churn](./assets/churn-header.png)
 
+**AI-powered code analysis for modern developers**
+
+Open-source • Local-first • Use as-is
+
+[![npm version](https://img.shields.io/npm/v/churn-cli.svg?style=flat-square&color=ff5656)](https://www.npmjs.com/package/churn-cli)
+[![npm downloads](https://img.shields.io/npm/dm/churn-cli.svg?style=flat-square&color=ff5656)](https://www.npmjs.com/package/churn-cli)
+[![License: MIT](https://img.shields.io/badge/License-MIT-ff5656.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+[![Made with Bun](https://img.shields.io/badge/Made%20with-Bun-ff5656?style=flat-square&logo=bun)](https://bun.sh)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-ff5656?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-ff5656.svg?style=flat-square)](https://github.com/cloudboyjh1/churn2.0/pulls)
+
+</div>
+
+---
+
+## Table of Contents
+
+- [Why Churn?](#why-churn)
+- [What's New in v2.0.5](#whats-new-in-v205)
+- [Quick Start](#quick-start)
+- [Features](#features)
+- [Performance & Cost](#performance--cost-optimization)
+- [Installation](#installation)
+- [Commands](#commands)
+- [Configuration](#configuration)
+- [Report Schema](#report-schema)
+- [Examples](#examples)
+- [Development](#development)
+- [Architecture](#architecture)
+- [Contributing](#contributing)
+- [Roadmap](#roadmap)
+- [Community & Support](#community--support)
+- [License](#license)
+
+---
+
+## Why Churn?
+
+**Built for developers, by developers.** Churn is an AI-assisted CLI tool that helps you maintain and refactor codebases with intelligent analysis—all from your terminal.
+
+**What makes Churn different:**
+
+- **Truly Open Source** - MIT licensed, no hidden fees, no telemetry, no account required
+- **Local-First** - Your code never leaves your machine unless you choose a cloud model
+- **Zero Setup** - Run from any Git repository, no configuration needed to start
+- **Model Freedom** - Use Claude, GPT, Gemini, or run completely offline with Ollama
+- **Production Ready** - v2.0.5 is stable and actively maintained
+- **Cost Conscious** - Smart caching and staged mode reduce API costs by 70-90%
+- **Beautiful Terminal UI** - Clean, focused interface that doesn't get in your way
+
+Churn respects your workflow, your privacy, and your budget.
+
+---
+
+## What's New in v2.0.5
+
+**Latest Release** - Published 2 days ago
+
+- Repository cleanup and optimization
+- Updated color theme to vibrant red (#ff5656)
+- Performance improvements and cost optimizations
+- Enhanced initialization flow
+- Global install support improvements
+- Bug fixes and stability enhancements
+
+See the [full changelog](https://github.com/cloudboyjh1/churn2.0/releases) for details.
+
+---
+
+## Quick Start
+
+**Get your first analysis in 30 seconds:**
+
+```bash
+# Install globally
+npm install -g churn-cli
+
+# Navigate to your project
+cd your-project
+
+# Run analysis
+churn start
 ```
- ▄████████    ▄█    █▄    ███    █▄     ▄████████ ███▄▄▄▄  
-███    ███   ███    ███   ███    ███   ███    ███ ███▀▀▀██▄
-███    █▀    ███    ███   ███    ███   ███    ███ ███   ███
-███         ▄███▄▄▄▄███▄▄ ███    ███  ▄███▄▄▄▄██▀ ███   ███
-███        ▀▀███▀▀▀▀███▀  ███    ███ ▀▀███▀▀▀▀▀   ███   ███
-███    █▄    ███    ███   ███    ███ ▀███████████ ███   ███
-███    ███   ███    ███   ███    ███   ███    ███ ███   ███
-████████▀    ███    █▀    ████████▀    ███    ███  ▀█   █▀ 
-                                       ███    ███          
-```
+
+That's it. Churn will:
+1. Detect your repository and project type
+2. Prompt you to select an AI model (first run only)
+3. Show you what it's about to analyze
+4. Stream results in real-time
+5. Let you review and accept/reject suggestions
+6. Export patches and reports
+
+**First-time users:** Start with `churn start` for an interactive experience. The tool will guide you through model selection and configuration.
+
+---
 
 ## Features
 
-- **Zero-Setup**: Run from any Git repository - no cloning or configuration required
-- **Local-First**: All data stored on your machine under `~/.churn/` and `.churn/`
-- **Multi-Model Support**: Claude, GPT, Gemini, or local Ollama
-- **Live Analysis**: Real-time streaming output with progress tracking
-- **Interactive Review**: Navigate and selectively accept suggestions
-- **Export Workflow**: Generate patches, reports, and JSON for downstream tools
-- **Beautiful UI**: Clean, coral-themed terminal interface powered by Ink
+- **Zero-Setup** - Run from any Git repository, no cloning or configuration required
+- **Local-First** - All data stored on your machine under `~/.churn/` and `.churn/`
+- **Multi-Model Support** - Claude, GPT, Gemini, or local Ollama models
+- **Live Analysis** - Real-time streaming output with progress tracking
+- **Interactive Review** - Navigate and selectively accept suggestions
+- **Export Workflow** - Generate patches, reports, and JSON for downstream tools
+- **Smart Caching** - Content-based caching reduces repeat analysis costs by 70%
+- **Staged Mode** - Analyze only staged files for 80-90% cost savings
+- **Parallel Processing** - Concurrent file analysis for 10x speed improvements
+- **Beautiful UI** - Clean, vibrant red-themed terminal interface powered by Ink
+
+---
+
+## Performance & Cost Optimization
+
+Churn 2.0 is designed to be fast and cost-effective.
+
+### Speed Optimization
+
+**Parallel Processing** (Default)
+- Files analyzed concurrently (5-10 at a time depending on provider)
+- ~10x faster than sequential analysis
+- Configurable via CLI
+
+```bash
+# Adjust concurrency (1-50)
+churn run --concurrency 15
+```
+
+**Smart Caching**
+- Analysis results cached based on file content
+- Unchanged files return instant results
+- Cache persists for 30 days
+- ~70% time savings on subsequent runs
+
+**File Prioritization**
+- Smart ordering based on language familiarity, size, and importance
+- Entry points analyzed first for quick feedback
+
+### Cost Optimization
+
+| Strategy | Cost Savings | Use Case |
+|----------|-------------|----------|
+| **Staged Mode** | 80-90% | Daily development workflow |
+| **Cheaper Models** | 60-80% | Routine scans |
+| **Smart Caching** | 70% | Repeated analysis |
+| **File Filtering** | 20-40% | Automatic (built-in) |
+
+**Best Practices:**
+
+1. **Daily work - Use staged mode**
+   ```bash
+   git add .
+   churn run --staged
+   ```
+
+2. **Quick scans - Use cheaper models**
+   ```bash
+   churn model  # Select claude-haiku-4-5 or gpt-4o-mini
+   churn run --staged
+   ```
+
+3. **Leverage caching** - Rerun after minor changes for 70% cost reduction
+
+4. **Full scans - Reserve for releases**
+   ```bash
+   churn run  # Only before major releases
+   ```
+
+**Cost Example** (50-file project):
+
+| Mode | Model | Cost | Time | When to Use |
+|------|-------|------|------|-------------|
+| `--staged` (5 files) | Haiku | $0.05 | 5s | Daily commits |
+| `--staged` (5 files) | Sonnet | $0.15 | 5s | Important features |
+| Full (50 files, cached) | Sonnet | $0.40 | 15s | Reruns |
+| Full (50 files) | Sonnet | $1.25 | 1-2min | First run / Release |
+| Full (50 files) | Opus | $3.75 | 1-2min | Critical releases |
+
+---
 
 ## Installation
 
@@ -53,32 +210,7 @@ bun run compile
 
 This creates a single executable binary `churn` or `churn.exe`.
 
-## Quick Start
-
-```bash
-# Navigate to your project
-cd your-project
-
-# Start interactive analysis (recommended for first-time users)
-churn start
-
-# Or use run (same as start)
-churn run
-
-# Analyze specific modes
-churn run --staged        # Analyze staged files only
-churn run --files src/**  # Analyze specific files
-```
-
-### First-Run Experience
-
-On first use, Churn will:
-1. Show welcome message and available commands
-2. Prompt you to select an AI provider (Anthropic, OpenAI, Google, or Ollama)
-3. Ask for API key (if using cloud provider)
-4. Save your selection as the default
-5. Show confirmation screen before analyzing
-6. Begin analysis after you press Enter
+---
 
 ## Commands
 
@@ -154,6 +286,8 @@ churn pass --to gpt4
 
 Outputs the full `churn-reports.json` to stdout for piping.
 
+---
+
 ## Configuration
 
 ### Global Config (`~/.churn/config.json`)
@@ -189,6 +323,19 @@ Outputs the full `churn-reports.json` to stdout for piping.
   ]
 }
 ```
+
+### API Keys
+
+Churn requires API keys for non-local models:
+
+- **Anthropic**: Get at [console.anthropic.com](https://console.anthropic.com/)
+- **OpenAI**: Get at [platform.openai.com](https://platform.openai.com/)
+- **Google**: Get at [makersuite.google.com](https://makersuite.google.com/)
+- **Ollama**: Run locally, no key needed
+
+Keys are stored in `~/.churn/config.json` and never sent anywhere except the respective API providers.
+
+---
 
 ## Report Schema
 
@@ -235,7 +382,7 @@ The `churn-reports.json` file follows this structure:
 }
 ```
 
-## Directory Structure
+### Directory Structure
 
 ```
 your-project/
@@ -254,27 +401,61 @@ your-project/
 └── config.json               # Global settings and credentials
 ```
 
-## Theme
+---
 
-Churn 2.0 is built around a vibrant red aesthetic centered on **#ff5656**.
+## Examples
 
-**Color Palette:**
-- Primary: `#ff5656` - Main vibrant red accent
-- Secondary: `#ff8585` - Lighter red
-- Text: `#f2e9e4` - Warm off-white
-- Gray: `#a6adc8` - Muted purple-gray
-- Info: `#8ab4f8` - Soft blue
-- Success: `#a6e3a1` - Soft green
-- Warning: `#f9e2af` - Soft yellow
-- Error: `#f38ba8` - Soft red
+### Analyze specific files
 
-All UI elements - progress bars, borders, highlights, and the ASCII logo - use this color system.
+```bash
+churn run --files src/components/*.tsx
+```
+
+### Analyze staged changes before commit
+
+```bash
+git add .
+churn run --staged
+```
+
+### Use a different model for one-off analysis
+
+```bash
+churn model  # Select new model
+churn run    # Run with new model
+```
+
+### Export and pipe to another tool
+
+```bash
+churn export
+churn pass --to claude | jq '.analysis.suggestions'
+```
+
+### Daily workflow example
+
+```bash
+# Work on your code
+git add src/components/Button.tsx
+
+# Quick analysis with cheap model
+churn model  # Select Haiku
+churn run --staged
+
+# Review and accept suggestions
+# Export patch
+churn export
+```
+
+---
 
 ## Development
 
 ### Setup
 
 ```bash
+git clone https://github.com/cloudboyjh1/churn2.0.git
+cd churn2.0
 bun install
 ```
 
@@ -296,6 +477,8 @@ bun run compile     # Compile to single binary
 ```bash
 bun run type-check
 ```
+
+---
 
 ## Architecture
 
@@ -333,164 +516,168 @@ bun run type-check
 
 - `theme.ts` - Color constants, helpers, and formatting utilities
 
-## Principles
+### Theme
 
-1. **Zero-Setup**: Works immediately in any Git repository
-2. **Local-First**: Everything stored locally, no cloud dependencies
-3. **Deterministic**: Same input produces same output
-4. **Visual Discipline**: Consistent coral-centered design
-5. **Immediate Feedback**: Real-time streaming, no waiting
-6. **Professional**: Quiet, focused, monospaced aesthetic
+Churn 2.0 is built around a vibrant red aesthetic centered on **#ff5656**.
 
-## API Keys
+**Color Palette:**
+- Primary: `#ff5656` - Main vibrant red accent
+- Secondary: `#ff8585` - Lighter red
+- Text: `#f2e9e4` - Warm off-white
+- Gray: `#a6adc8` - Muted purple-gray
+- Info: `#8ab4f8` - Soft blue
+- Success: `#a6e3a1` - Soft green
+- Warning: `#f9e2af` - Soft yellow
+- Error: `#f38ba8` - Soft red
 
-Churn 2.0 requires API keys for non-local models:
+All UI elements - progress bars, borders, highlights, and the ASCII logo - use this color system.
 
-- **Anthropic**: Get at [console.anthropic.com](https://console.anthropic.com/)
-- **OpenAI**: Get at [platform.openai.com](https://platform.openai.com/)
-- **Google**: Get at [makersuite.google.com](https://makersuite.google.com/)
-- **Ollama**: Run locally, no key needed
+### Principles
 
-Keys are stored in `~/.churn/config.json` and never sent anywhere except the respective API providers.
+1. **Zero-Setup** - Works immediately in any Git repository
+2. **Local-First** - Everything stored locally, no cloud dependencies
+3. **Deterministic** - Same input produces same output
+4. **Visual Discipline** - Consistent color-centered design
+5. **Immediate Feedback** - Real-time streaming, no waiting
+6. **Professional** - Quiet, focused, monospaced aesthetic
 
-## Performance & Cost Optimization
-
-Churn 2.0 is designed to be fast and cost-effective. Here are strategies to optimize both:
-
-### Speed Optimization
-
-**Parallel Processing** (Default)
-- Files are analyzed concurrently (5-10 at a time depending on provider)
-- ~10x faster than sequential analysis
-- Configurable via CLI or config
-
-```bash
-# Adjust concurrency (1-50)
-churn run --concurrency 15
-```
-
-**Smart Caching**
-- Analysis results are automatically cached based on file content
-- Unchanged files return instant results on reruns
-- Cache persists for 30 days
-- ~70% time savings on subsequent runs
-
-**File Prioritization**
-- Files analyzed in smart order based on:
-  - Model language familiarity
-  - File size (smaller first for quick feedback)
-  - File importance (entry points prioritized)
-
-### Cost Optimization
-
-Churn is optimized to minimize API costs while providing maximum value.
-
-| Strategy | Cost Savings | Use Case |
-|----------|-------------|----------|
-| **Staged Mode** | 80-90% | Daily development workflow |
-| **Cheaper Models** | 60-80% | Routine scans |
-| **Smart Caching** | 70% | Repeated analysis |
-| **File Filtering** | 20-40% | Automatic (built-in) |
-
-**Best Practices for Cost-Conscious Development:**
-
-1. **Daily work - Use staged mode** (saves 80-90%)
-   ```bash
-   # Only analyze files you're actively working on
-   git add .
-   churn run --staged
-   ```
-
-2. **Quick scans - Use cheaper models** (saves 60-80%)
-   ```bash
-   # For routine checks, use Haiku or GPT-4o-mini
-   churn model  # Select claude-haiku-4-5
-   churn run --staged
-   ```
-
-3. **Leverage caching** (saves 70% on reruns)
-   ```bash
-   # First run: Full cost
-   churn run
-   
-   # Rerun after minor changes: ~70% cached
-   churn run  # Most files returned from cache
-   ```
-
-4. **Full scans - Use for releases only**
-   ```bash
-   # Reserve full repo scans with premium models for important milestones
-   churn run --mode full  # Only before releases
-   ```
-
-**Cost Comparison Example** (50-file project):
-
-| Mode | Model | Cost | Time | When to Use |
-|------|-------|------|------|-------------|
-| `--staged` (5 files) | Haiku | $0.05 | 5s | Daily commits |
-| `--staged` (5 files) | Sonnet | $0.15 | 5s | Important features |
-| Full (50 files, cached) | Sonnet | $0.40 | 15s | Reruns |
-| Full (50 files) | Sonnet | $1.25 | 1-2min | First run / Release |
-| Full (50 files) | Opus | $3.75 | 1-2min | Critical releases |
-
-### Automatic Optimizations
-
-These are built-in and require no configuration:
-
-- **Smart file filtering**: Skips `node_modules`, `dist`, test files, `.d.ts`, lock files, minified code
-- **Content-based caching**: Files analyzed once until content changes
-- **Priority scheduling**: Important files analyzed first
-- **Retry logic**: Handles rate limits gracefully
-- **Parallel processing**: Default concurrency tuned per provider
-
-## Examples
-
-### Analyze specific files
-
-```bash
-churn run --files src/components/*.tsx
-```
-
-### Analyze staged changes before commit
-
-```bash
-git add .
-churn run --staged
-```
-
-### Use a different model
-
-```bash
-churn model  # Select new model
-churn run    # Run with new model
-```
-
-### Export last results
-
-```bash
-churn export
-```
-
-### Pass to another tool
-
-```bash
-churn pass --to claude | jq '.analysis.suggestions'
-```
+---
 
 ## Contributing
 
-Churn 2.0 is built to be extended. Contributions welcome for:
+Churn is open-source and welcomes contributions from the community.
+
+### How to Contribute
+
+1. **Fork the repository**
+2. **Create a feature branch** (`git checkout -b feature/amazing-feature`)
+3. **Make your changes**
+4. **Test thoroughly** (`bun run type-check` and test the CLI)
+5. **Commit your changes** (`git commit -m 'Add amazing feature'`)
+6. **Push to your branch** (`git push origin feature/amazing-feature`)
+7. **Open a Pull Request**
+
+### Areas for Contribution
 
 - Additional model providers
 - Enhanced analysis prompts
 - New export formats
+- Language-specific analysis profiles
 - UI improvements
+- Documentation improvements
 - Bug fixes
+- Performance optimizations
+
+### Development Guidelines
+
+- Follow the existing code style (TypeScript, functional where possible)
+- Maintain the color theme consistency (#ff5656)
+- Add tests for new features
+- Update documentation for user-facing changes
+- Keep the CLI fast and responsive
+
+---
+
+## Roadmap
+
+### Planned Features
+
+**Language Specialties**
+- Enhanced analysis for Python, Rust, Go, Java with language-specific best practices
+- Framework detection for React, Next.js, FastAPI, Django, Rails
+- Language-specific code patterns and anti-patterns
+
+**Repository Profiles**
+- Auto-detect and optimize for monorepos, microservices, libraries, frameworks
+- Project type-specific analysis rules
+- Custom analysis depth based on repo structure
+
+**Custom Analysis Packs**
+- Install community-created rule sets for specific use cases
+- Security-focused analysis packs
+- Performance optimization packs
+- Style and convention packs
+- Share and discover packs via registry
+
+**Team Workflows**
+- Shared configurations across teams
+- Standardized analysis profiles
+- Team-wide best practices enforcement
+
+**CI/CD Integration**
+- Ready-to-use GitHub Actions workflows
+- GitLab CI templates
+- Jenkins pipeline integration
+- Automated PR analysis and comments
+
+### Future Exploration
+
+- Multi-repo analysis and cross-project insights
+- Historical trend tracking and code quality metrics
+- Custom AI model fine-tuning for your codebase
+- Integration with popular code quality tools
+- Advanced reporting and visualization
+
+**Have ideas?** [Open an issue](https://github.com/cloudboyjh1/churn2.0/issues) or submit a PR!
+
+---
+
+## Community & Support
+
+### Getting Help
+
+- **GitHub Issues** - [Report bugs or request features](https://github.com/cloudboyjh1/churn2.0/issues)
+- **GitHub Discussions** - Ask questions and share experiences (coming soon)
+- **Documentation** - Check this README and code comments
+
+### Reporting Bugs
+
+When reporting bugs, please include:
+- Churn version (`churn --version`)
+- Operating system
+- Node/Bun version
+- Steps to reproduce
+- Expected vs actual behavior
+- Any error messages or logs
+
+### Feature Requests
+
+We love feature ideas! When requesting features:
+- Describe the problem you're trying to solve
+- Explain how the feature would help
+- Provide examples if possible
+- Consider contributing a PR
+
+---
 
 ## License
 
-MIT
+MIT License - see [LICENSE](LICENSE) for details.
+
+Copyright (c) 2025 Churn Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
 
 ## Acknowledgments
 
-Built with Ink, powered by Bun, themed in coral.
+Built with [Ink](https://github.com/vadimdemedes/ink), powered by [Bun](https://bun.sh), themed in vibrant red.
+
+Special thanks to the open-source community and all contributors who make Churn better.
+
+---
+
+<div align="center">
+
+**Star the repo if you find Churn useful!**
+
+[Report Bug](https://github.com/cloudboyjh1/churn2.0/issues) • [Request Feature](https://github.com/cloudboyjh1/churn2.0/issues) • [Contribute](https://github.com/cloudboyjh1/churn2.0/pulls)
+
+Made with care for developers everywhere.
+
+</div>
