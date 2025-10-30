@@ -37,7 +37,14 @@ export const AVAILABLE_MODELS = {
     "gemini-2-5-flash-lite",
     "gemini-2-0-flash",
   ],
-  ollama: ["llama3.3:70b", "deepseek-r1", "qwen2.5", "mistral", "codellama"],
+  ollama: [
+    "deepseek-r1:latest",
+    "qwen2.5-coder:14b",
+    "llama3.3:70b",
+    "phi-3-mini",
+    "codellama:13b",
+    "mistral:7b",
+  ],
 } as const;
 
 // Create a model client
