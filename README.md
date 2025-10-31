@@ -2,7 +2,7 @@
 
 ![Churn](./assets/churnreadme.png)
 
-**AI-powered code analysis for modern developers**
+**Refactor smarter. From your terminal.**
 
 Open-source • Local-first • Use as-is
 
