@@ -97,7 +97,6 @@ Churn gives you **actionable insights**, not just observations. Every finding in
 - Global install support improvements
 - Bug fixes and stability enhancements
 
-See the [full changelog](https://github.com/cloudboyjh1/churn2.0/releases) for details.
 
 ---
 
