@@ -246,3 +246,176 @@ Since this is a CLI tool, manual testing is primary:
 - **Streaming**: onStream callback must handle both content chunks and done signal
 - **Path handling**: Always use `path.relative()` for display, `path.absolute()` for operations
 - **Git detection**: Always verify `isGitRepo()` before attempting Git operations
+
+---
+
+## Documentation Coverage for Fumadocs
+
+The following sections were removed from README.md and should be documented in Fumadocs when it's set up:
+
+### 📘 Architecture Deep-Dive
+**Location in Codebase**: See "Architecture Overview" section above
+
+**Should Cover**:
+- Complete tech stack details (Bun, TypeScript, Ink, AI SDKs)
+- Full module breakdown:
+  - Engine layer (`config.ts`, `git.ts`, `models.ts`, `analysis.ts`, `reports.ts`)
+  - UI components (all components with purpose and props)
+  - Theme system (`theme.ts`) with complete color palette
+- Architecture principles (Zero-setup, Local-first, Deterministic, etc.)
+- Data flow diagrams
+- File system structure (`.churn/`, `~/.churn/`)
+
+### 📘 Report Schema Reference
+**Location in Codebase**: `src/engine/reports.ts`, `src/engine/analysis.ts`
+
+**Should Cover**:
+- Complete TypeScript interface for `ChurnReport`
+- `AnalysisResult` structure with all fields
+- `FileSuggestion` schema with examples
+- Directory structure:
+  ```
+  .churn/
+  ├── config.json
+  ├── reports/churn-reports.json
+  └── patches/
+  ```
+- JSON schema with validation rules
+- Example reports with annotations
+
+### 📘 Development Setup Guide
+**Location in Codebase**: See "Build & Development Commands" section above
+
+**Should Cover**:
+- Prerequisites (Bun installation)
+- Clone and setup steps
+- Development commands (`bun run dev`, `bun run type-check`)
+- Build process (`bun run build`, `bun run compile`)
+- Testing strategies (manual testing in git repos)
+- Debugging tips
+- Contributing workflow
+
+### 📘 Ollama Advanced Configuration
+**Current Location**: Previously in README.md (removed for brevity)
+
+**Should Cover**:
+- Detailed model comparison table (VRAM, RAM, Speed, Quality)
+- Hardware requirements:
+  - Laptop (8-16 GB RAM) recommendations
+  - Desktop (16-32 GB RAM) recommendations  
+  - Workstation (32+ GB RAM) recommendations
+- Performance expectations by project size
+- Optimization tips:
+  - Staged mode for daily work
+  - Concurrency tuning for local models
+  - Model selection strategies
+- Advanced Ollama commands (`ollama update`, `ollama list`, `ollama rm`)
+- Troubleshooting common issues
+- Links to Ollama documentation and model library
+
+### 📘 Performance Optimization Guide
+**Location in Codebase**: `src/engine/analysis.ts` (parallel processing, caching logic)
+
+**Should Cover**:
+- **Speed optimization techniques**:
+  - Parallel processing configuration (`--concurrency` flag)
+  - Smart caching (content-based SHA-256, 30-day retention)
+  - File prioritization strategies
+- **Cost optimization strategies**:
+  - Staged mode (80-90% savings)
+  - Model selection (Haiku vs Sonnet vs Opus)
+  - Caching benefits (70% cost reduction)
+  - File filtering impact
+- **Detailed cost tables** (removed from README):
+  - Cost per mode (staged vs full)
+  - Cost by model tier
+  - Time estimates by project size
+- **Best practices**:
+  - Daily workflow (staged + cheaper models)
+  - Release workflow (full scans + premium models)
+  - Team workflows
+
+### 📘 Cost Analysis Tables
+**Reference Data**: Previously in README.md
+
+**Should Cover**:
+- Cost comparison table:
+  ```
+  | Mode | Model | Cost | Time | When to Use |
+  | --staged (5 files) | Haiku | $0.05 | 5s | Daily commits |
+  | Full (50 files) | Sonnet | $1.25 | 1-2min | Release scans |
+  ```
+- Provider pricing comparison
+- Cost estimation calculator
+- Usage tracking recommendations
+- Budget planning for teams
+
+### 📘 Roadmap & Future Plans
+**Reference**: Previously in README.md
+
+**Should Cover**:
+- **Planned features**:
+  - Language specialties (Python, Rust, Go, Java)
+  - Framework detection (React, Next.js, FastAPI, Django, Rails)
+  - Repository profiles (monorepos, microservices)
+  - Custom analysis packs (security, performance, style)
+  - Team workflows and shared configurations
+  - CI/CD integration (GitHub Actions, GitLab CI)
+- **Future exploration**:
+  - Multi-repo analysis
+  - Historical trend tracking
+  - Custom model fine-tuning
+  - Integration with code quality tools
+  - Advanced reporting/visualization
+- Contribution opportunities
+- Timeline estimates (where applicable)
+
+### 📘 Detailed Examples
+**Reference**: `docs/guides/EXAMPLES.md` (if exists)
+
+**Should Cover**:
+- **Command examples**:
+  - Analyzing specific files: `churn run --files src/**/*.tsx`
+  - Staged analysis workflow: `git add . && churn run --staged`
+  - Model switching for one-off scans
+  - Piping exports: `churn pass --to json | jq`
+- **Workflow examples**:
+  - Daily development workflow
+  - Pre-release workflow
+  - Team code review workflow
+  - CI/CD integration examples
+- **Real-world use cases**:
+  - Cleaning up technical debt
+  - Onboarding new team members
+  - Security audit workflow
+  - Performance optimization hunt
+- **Advanced patterns**:
+  - Custom ignore patterns
+  - Multi-stage analysis
+  - Report aggregation across projects
+
+### Additional Documentation Recommendations
+
+**API Reference**:
+- All public functions in engine layer
+- Configuration options reference
+- CLI flags and options
+- Environment variables
+
+**Troubleshooting Guide**:
+- Common errors and solutions
+- API key issues
+- Ollama connection problems
+- Performance issues
+- Rate limiting
+
+**Migration Guides**:
+- Upgrading from v1.x to v2.x
+- Changing AI providers
+- Moving configurations
+
+**Integration Guides**:
+- GitHub Actions workflow
+- GitLab CI pipeline
+- Pre-commit hooks
+- IDE integration (VS Code, etc.)
