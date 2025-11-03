@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.7] - 2025-11-03
+
+### Fixed
+- Version mismatch between package.json and CLI display
+- Massive dependency bloat from extraneous packages (reduced from 535 to 139 packages)
+- Installation performance (88% reduction in file count: 54,925 → 6,720 files)
+
+### Changed
+- Cleaned up node_modules to remove hundreds of extraneous packages
+- Optimized package installation speed
+
 ## [2.0.6] - 2025-11-03
 
 ### Added
