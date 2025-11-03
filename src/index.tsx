@@ -44,7 +44,7 @@ interface AppProps {
 }
 
 function App({ command, context, askQuestion, concurrency }: AppProps) {
-  const [phase, setPhase] = useState<AppPhase>("init");
+  const [phase, setPhase] = useState<AppPhase>("model");
   const [repoSummary, setRepoSummary] = useState<string>("");
   const [modelConfig, setModelConfig] = useState<ModelConfig | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(
@@ -64,6 +64,16 @@ function App({ command, context, askQuestion, concurrency }: AppProps) {
   useEffect(() => {
     initialize();
   }, []);
+
+  // Handle auto-exit for complete phase
+  useEffect(() => {
+    if (phase === "complete") {
+      const timer = setTimeout(() => {
+        process.exit(0);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [phase]);
 
   async function initialize() {
     // Check if in a git repository
@@ -182,17 +192,6 @@ function App({ command, context, askQuestion, concurrency }: AppProps) {
     setPhase("complete");
   }
 
-  if (phase === "init") {
-    return (
-      <Box flexDirection="column">
-        <Logo subtitle="AI-assisted code maintenance" />
-        <Box>
-          <Text color="#8ab4f8">Initializing...</Text>
-        </Box>
-      </Box>
-    );
-  }
-
   if (phase === "model") {
     return (
       <Box flexDirection="column">
@@ -300,14 +299,6 @@ function App({ command, context, askQuestion, concurrency }: AppProps) {
   }
 
   if (phase === "complete") {
-    // Exit cleanly after a short delay to show completion message
-    useEffect(() => {
-      const timer = setTimeout(() => {
-        process.exit(0);
-      }, 1500);
-      return () => clearTimeout(timer);
-    }, []);
-
     return (
       <Box flexDirection="column">
         <Logo subtitle="AI-assisted code maintenance" />
