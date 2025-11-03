@@ -80,19 +80,6 @@ Churn gives you **actionable insights**, not just observations. Every finding in
 
 ---
 
-## What's New in v2.0.5
-
-**Latest Release** - Published 2 days ago
-
-- Repository cleanup and optimization
-- Updated color theme to vibrant red (#ff5656)
-- Performance improvements and cost optimizations
-- Enhanced initialization flow
-- Global install support improvements
-- Bug fixes and stability enhancements
-
----
-
 ## Quick Start
 
 **Get your first analysis in 30 seconds:**
@@ -300,22 +287,6 @@ Churn is open-source and welcomes contributions.
 6. Open a Pull Request
 
 [Report bugs or request features](https://github.com/cloudboyjh1/churn2.0/issues)
-
----
-
-## Documentation
-
-For detailed documentation, guides, and examples, visit our docs site.
-
-**Coming Soon:**
-- 📘 Architecture deep-dive
-- 📘 Report schema reference
-- 📘 Development setup guide
-- 📘 Ollama advanced configuration
-- 📘 Performance optimization guide
-- 📘 Cost analysis tables
-- 📘 Roadmap & future plans
-- 📘 Detailed examples
 
 ---
 
