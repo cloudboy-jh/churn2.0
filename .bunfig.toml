@@ -1,0 +1,9 @@
+[install]
+# Use npm registry
+registry = "https://registry.npmjs.org/"
+
+# Use Bun's native lockfile format
+lockfile = true
+
+# Don't migrate from package-lock.json
+auto = false

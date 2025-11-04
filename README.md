@@ -21,7 +21,7 @@ Open-source • Local-first • Use as-is
 
 - [Why Churn?](#why-churn)
 - [What Churn Finds](#what-churn-finds)
-- [What's New in v2.0.5](#whats-new-in-v205)
+- [What's New in v2.0.8](#whats-new-in-v208)
 - [Quick Start](#quick-start)
 - [Features](#features)
 - [Installation](#installation)
@@ -44,7 +44,7 @@ Open-source • Local-first • Use as-is
 - **Local-First** - Your code never leaves your machine unless you choose a cloud model
 - **Zero Setup** - Run from any Git repository, no configuration needed to start
 - **Model Freedom** - Use Claude, GPT, Gemini, or run completely offline with Ollama
-- **Production Ready** - v2.0.5 is stable and actively maintained
+- **Production Ready** - v2.0.8 is stable and actively maintained
 - **Cost Conscious** - Smart caching and staged mode reduce API costs by 70-90%
 - **Beautiful Terminal UI** - Clean, focused interface that doesn't get in your way
 
@@ -132,7 +132,7 @@ That's it. Churn will:
 # Using npm
 npm install -g churn-cli
 
-# Using Bun (faster)
+# Using Bun (faster, recommended)
 bun install -g churn-cli
 
 # Using pnpm
@@ -141,6 +141,32 @@ pnpm install -g churn-cli
 # Using yarn
 yarn global add churn-cli
 ```
+
+**Note:** Churn is built with Bun. While it works with npm/yarn/pnpm, using Bun ensures the best experience.
+
+### For Development
+
+**Requirements:** Bun 1.x (NOT Node.js)
+
+```bash
+# Clone the repository
+git clone https://github.com/cloudboyjh1/churn2.0.git
+cd churn2.0
+
+# Install dependencies with Bun
+bun install
+
+# Run in development mode
+bun run dev
+
+# Build
+bun run build
+
+# Type check
+bun run type-check
+```
+
+**Important:** This project requires Bun. Do not use `npm install` for development as it may cause dependency issues.
 
 ---
 
@@ -175,9 +201,24 @@ churn start
 
 ## Commands
 
-### `churn start` / `churn run`
+### `churn start`
 
-Run code analysis on your repository.
+Launch interactive menu with options to run analysis, choose model, or exit.
+
+**New in v2.0.8:** `churn start` now provides an interactive menu for a guided experience.
+
+```bash
+churn start
+```
+
+**Menu Options:**
+- **Run scan** - Start code analysis with current model
+- **Choose model** - Select or switch AI provider/model
+- **Exit** - Quit the application
+
+### `churn run`
+
+Direct code analysis for power users (no interactive menu).
 
 **Options:**
 - `-s, --staged` - Analyze only staged files

@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.8] - 2025-11-04
+
+### Added
+- Interactive menu for `churn start` command with options: Run scan, Choose model, Exit
+- New `StartMenu` component with keyboard navigation
+- `.bunfig.toml` configuration to prevent package-lock.json migration issues
+
+### Changed
+- **Breaking:** `churn start` now shows interactive menu instead of running directly
+- `churn run` remains for direct execution (power users)
+- Unified logo rendering at App level to prevent double-render during phase transitions
+- Model selection no longer auto-exits, stays on model phase until user manually exits
+- Improved help output clarity
+
+### Fixed
+- Double ASCII logo render issue during phase transitions
+- TUI exiting prematurely after 1-1.5 seconds
+- Duplicate "model" and "switch-model" commands in help (merged into single `churn model` command)
+- Bun install reading package-lock.json and installing 5933 files unnecessarily
+- React Hooks order consistency across all render paths
+
+### Removed
+- `switch-model` command (functionality merged into `churn model`)
+- Premature phase transitions to "complete" that caused early exits
+
 ## [2.0.7] - 2025-11-03
 
 ### Fixed

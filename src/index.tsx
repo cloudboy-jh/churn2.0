@@ -11,6 +11,7 @@ import { ExportPanel } from "./components/ExportPanel.js";
 import { AskConsole } from "./components/AskConsole.js";
 import { CommandsList } from "./components/CommandsList.js";
 import { ConfirmRun } from "./components/ConfirmRun.js";
+import { StartMenu } from "./components/StartMenu.js";
 import { getRepoInfo, detectProjectType, isGitRepo } from "./engine/git.js";
 import {
   ensureProjectDir,
@@ -27,6 +28,7 @@ import { theme, symbols } from "./theme.js";
 
 type AppPhase =
   | "init"
+  | "start"
   | "model"
   | "confirm"
   | "run"
@@ -37,16 +39,24 @@ type AppPhase =
   | "complete";
 
 interface AppProps {
-  command: "run" | "model" | "switch-model" | "ask";
+  command: "start" | "run" | "model" | "ask";
   context?: AnalysisContext;
   askQuestion?: string;
   concurrency?: number;
 }
 
-function App({ command, context, askQuestion, concurrency }: AppProps) {
+function App({
+  command,
+  context: initialContext,
+  askQuestion,
+  concurrency,
+}: AppProps) {
   const [phase, setPhase] = useState<AppPhase>("model");
   const [repoSummary, setRepoSummary] = useState<string>("");
   const [modelConfig, setModelConfig] = useState<ModelConfig | null>(null);
+  const [context, setContext] = useState<AnalysisContext | undefined>(
+    initialContext,
+  );
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(
     null,
   );
@@ -110,7 +120,10 @@ function App({ command, context, askQuestion, concurrency }: AppProps) {
     }
 
     // Route to appropriate phase based on command
-    if (command === "model" || command === "switch-model") {
+    if (command === "start") {
+      // Start command shows interactive menu
+      setPhase("start");
+    } else if (command === "model") {
       setPhase("model");
     } else if (command === "ask") {
       // For ask command, check if we have model config
@@ -159,14 +172,15 @@ function App({ command, context, askQuestion, concurrency }: AppProps) {
 
   function handleModelComplete(config: ModelConfig) {
     setModelConfig(config);
-    if (command === "model" || command === "switch-model") {
-      setPhase("complete");
+    if (command === "model") {
+      // Stay on model phase to show success, don't exit
+      // User can manually exit with Ctrl+C
     } else if (command === "run") {
       // After model setup, continue to confirm phase if context is available
       if (context) {
         setPhase("confirm");
       } else {
-        setPhase("complete");
+        // Stay on model phase, don't exit prematurely
       }
     } else if (command === "ask") {
       // After model setup, go to ask input or direct ask
@@ -192,23 +206,70 @@ function App({ command, context, askQuestion, concurrency }: AppProps) {
     setPhase("complete");
   }
 
-  if (phase === "model") {
-    return (
-      <Box flexDirection="column">
-        <Logo subtitle="AI-assisted code maintenance" message={repoSummary} />
+  // Get subtitle based on phase
+  const getSubtitle = () => {
+    switch (phase) {
+      case "start":
+        return "Interactive Menu";
+      case "ask":
+      case "ask-input":
+        return "Ask a Question";
+      case "review":
+        return "Review Analysis Results";
+      case "export":
+        return "Exporting Results";
+      default:
+        return "AI-assisted code maintenance";
+    }
+  };
 
-        {/* Show commands list on first run */}
-        {showCommandsList && <CommandsList />}
+  return (
+    <Box flexDirection="column">
+      {/* Single logo at App level */}
+      <Logo subtitle={getSubtitle()} message={repoSummary} />
 
-        <ModelSelect onComplete={handleModelComplete} />
-      </Box>
-    );
-  }
+      {/* Phase-specific content */}
+      {phase === "start" && (
+        <StartMenu
+          onRunScan={async () => {
+            // Set default context for full scan if not already set
+            if (!context) {
+              setContext({ mode: "full" });
+            }
 
-  if (phase === "confirm" && modelConfig && context) {
-    return (
-      <Box flexDirection="column">
-        <Logo subtitle="AI-assisted code maintenance" message={repoSummary} />
+            // Check if model is configured
+            const complete = await isSetupComplete();
+            if (complete && !modelConfig) {
+              const defaultModel = await getDefaultModel();
+              if (defaultModel) {
+                setModelConfig({
+                  provider: defaultModel.provider,
+                  model: defaultModel.model,
+                });
+              }
+            }
+
+            // Go to model setup if not configured, otherwise confirm
+            if (!modelConfig) {
+              setPhase("model");
+            } else {
+              setPhase("confirm");
+            }
+          }}
+          onChooseModel={() => setPhase("model")}
+          onExit={() => setPhase("complete")}
+        />
+      )}
+
+      {phase === "model" && (
+        <>
+          {/* Show commands list on first run */}
+          {showCommandsList && <CommandsList />}
+          <ModelSelect onComplete={handleModelComplete} />
+        </>
+      )}
+
+      {phase === "confirm" && modelConfig && context && (
         <ConfirmRun
           modelConfig={modelConfig}
           context={context}
@@ -217,14 +278,9 @@ function App({ command, context, askQuestion, concurrency }: AppProps) {
           onConfirm={() => setPhase("run")}
           onCancel={() => setPhase("complete")}
         />
-      </Box>
-    );
-  }
+      )}
 
-  if (phase === "ask-input") {
-    return (
-      <Box flexDirection="column">
-        <Logo subtitle="Ask a Question" message={repoSummary} />
+      {phase === "ask-input" && (
         <Box flexDirection="column" paddingY={1}>
           <Box marginBottom={1}>
             <Text color="#f2e9e4">Enter your question:</Text>
@@ -243,73 +299,46 @@ function App({ command, context, askQuestion, concurrency }: AppProps) {
             />
           </Box>
         </Box>
-      </Box>
-    );
-  }
+      )}
 
-  if (phase === "ask" && modelConfig && question) {
-    return (
-      <Box flexDirection="column">
-        <Logo subtitle="Ask a Question" message={repoSummary} />
+      {phase === "ask" && modelConfig && question && (
         <AskConsole
           question={question}
           modelConfig={modelConfig}
           onComplete={() => setPhase("complete")}
         />
-      </Box>
-    );
-  }
+      )}
 
-  if (phase === "run" && modelConfig && context) {
-    return (
-      <Box flexDirection="column">
-        <Logo subtitle="AI-assisted code maintenance" message={repoSummary} />
+      {phase === "run" && modelConfig && context && (
         <RunConsole
           modelConfig={modelConfig}
           context={context}
           onComplete={handleRunComplete}
           concurrency={concurrencyLimit}
         />
-      </Box>
-    );
-  }
+      )}
 
-  if (phase === "review" && analysisResult) {
-    return (
-      <Box flexDirection="column">
-        <Logo subtitle="Review Analysis Results" message={repoSummary} />
+      {phase === "review" && analysisResult && (
         <ReviewPanel
           result={analysisResult}
           onComplete={handleReviewComplete}
         />
-      </Box>
-    );
-  }
+      )}
 
-  if (phase === "export") {
-    return (
-      <Box flexDirection="column">
-        <Logo subtitle="Exporting Results" message={repoSummary} />
+      {phase === "export" && (
         <ExportPanel
           suggestions={acceptedSuggestions}
           onComplete={handleExportComplete}
         />
-      </Box>
-    );
-  }
+      )}
 
-  if (phase === "complete") {
-    return (
-      <Box flexDirection="column">
-        <Logo subtitle="AI-assisted code maintenance" />
+      {phase === "complete" && (
         <Box marginTop={1}>
           <Text color="#a6e3a1">{symbols.tick} Complete</Text>
         </Box>
-      </Box>
-    );
-  }
-
-  return null;
+      )}
+    </Box>
+  );
 }
 
 // CLI Program
@@ -320,20 +349,13 @@ program
   .description(
     "AI-assisted developer tool for maintaining and refactoring codebases",
   )
-  .version("2.0.7");
+  .version("2.0.8");
 
 program
   .command("model")
-  .description("Select AI model provider and model")
+  .description("Select or switch AI model provider and model")
   .action(() => {
     render(<App command="model" />);
-  });
-
-program
-  .command("switch-model")
-  .description("Switch AI model provider or model")
-  .action(() => {
-    render(<App command="switch-model" />);
   });
 
 program
@@ -375,32 +397,11 @@ program
 
 program
   .command("start")
-  .description("Start interactive code analysis (alias for 'run')")
-  .option("-s, --staged", "Analyze only staged files")
-  .option("-f, --files <files...>", "Analyze specific files")
-  .option(
-    "-c, --concurrency <number>",
-    "Number of files to analyze in parallel (1-50)",
-    parseInt,
+  .description(
+    "Start interactive menu (choose: run scan, choose model, or exit)",
   )
-  .action((options) => {
-    const context: AnalysisContext = {
-      mode: options.staged ? "staged" : options.files ? "files" : "full",
-      files: options.files,
-    };
-
-    // Validate concurrency if provided
-    if (options.concurrency !== undefined) {
-      const concurrency = options.concurrency;
-      if (isNaN(concurrency) || concurrency < 1 || concurrency > 50) {
-        console.error("Error: Concurrency must be a number between 1 and 50");
-        process.exit(1);
-      }
-    }
-
-    render(
-      <App command="run" context={context} concurrency={options.concurrency} />,
-    );
+  .action(() => {
+    render(<App command="start" />);
   });
 
 program
