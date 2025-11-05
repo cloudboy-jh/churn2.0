@@ -47,6 +47,24 @@ export const AVAILABLE_MODELS = {
   ],
 } as const;
 
+// Get installed Ollama models from local instance
+export async function getInstalledOllamaModels(): Promise<string[]> {
+  try {
+    const ollama = new Ollama({ host: "http://localhost:11434" });
+    const response = await ollama.list();
+
+    // Extract model names from the response
+    if (response && response.models && Array.isArray(response.models)) {
+      return response.models.map((model: any) => model.name);
+    }
+
+    return [];
+  } catch (error) {
+    // Ollama not running or not installed
+    return [];
+  }
+}
+
 // Create a model client
 export async function createModelClient(config: ModelConfig) {
   const { provider, apiKey, baseURL } = config;

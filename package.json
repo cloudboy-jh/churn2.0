@@ -1,6 +1,6 @@
 {
   "name": "churn-cli",
-  "version": "2.0.10",
+  "version": "2.0.11",
   "description": "AI-assisted developer tool for maintaining and refactoring codebases",
   "type": "module",
   "author": "cloudboyjh1",

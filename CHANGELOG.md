@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.11] - 2025-11-05
+
+### Fixed
+- **Model selection flow:** Model selection now returns to start menu instead of exiting (src/index.tsx:186)
+- **Dynamic Ollama models:** Ollama model list now fetches only installed models from local instance (src/engine/models.ts:49)
+- **Model visibility:** Current model now displayed in subtitle: "Current model: provider/model" (src/index.tsx:228)
+
+### Changed
+- Added `getInstalledOllamaModels()` function to fetch models from Ollama API (src/engine/models.ts:49)
+- ModelSelect component now has Ollama-specific state and loading indicators (src/components/ModelSelect.tsx:32)
+- Interactive menu subtitle now shows current model configuration or "No model selected" (src/index.tsx:72)
+
+### Improved
+- Better user feedback when Ollama has no models installed with helpful error message
+- Model selection UI now updates `currentModelDisplay` state when model changes
+
 ## [2.0.10] - 2025-11-05
 
 ### Fixed

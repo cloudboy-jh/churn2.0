@@ -70,6 +70,8 @@ function App({
   const [concurrencyLimit, setConcurrencyLimit] = useState<number | undefined>(
     concurrency,
   );
+  const [currentModelDisplay, setCurrentModelDisplay] =
+    useState<string>("No model selected");
 
   useEffect(() => {
     initialize();
@@ -113,6 +115,16 @@ function App({
     // Check setup status
     const complete = await isSetupComplete();
     setSetupComplete(complete);
+
+    // Load current model for display
+    if (complete) {
+      const defaultModel = await getDefaultModel();
+      if (defaultModel) {
+        setCurrentModelDisplay(
+          `Current model: ${defaultModel.provider}/${defaultModel.model}`,
+        );
+      }
+    }
 
     // Show commands list only on first run
     if (!complete) {
@@ -172,9 +184,13 @@ function App({
 
   function handleModelComplete(config: ModelConfig) {
     setModelConfig(config);
+    setCurrentModelDisplay(`Current model: ${config.provider}/${config.model}`);
     if (command === "model") {
       // Stay on model phase to show success, don't exit
       // User can manually exit with Ctrl+C
+    } else if (command === "start") {
+      // Return to start menu after model selection
+      setPhase("start");
     } else if (command === "run") {
       // After model setup, continue to confirm phase if context is available
       if (context) {
@@ -210,7 +226,7 @@ function App({
   const getSubtitle = () => {
     switch (phase) {
       case "start":
-        return "Interactive Menu";
+        return currentModelDisplay;
       case "ask":
       case "ask-input":
         return "Ask a Question";
@@ -349,7 +365,7 @@ program
   .description(
     "AI-assisted developer tool for maintaining and refactoring codebases",
   )
-  .version("2.0.8");
+  .version("2.0.11");
 
 program
   .command("model")
@@ -473,7 +489,7 @@ program
 
 // Default command
 if (process.argv.length === 2) {
-  program.parse(["node", "churn", "run"]);
+  program.parse(["node", "churn", "start"]);
 } else {
   program.parse();
 }

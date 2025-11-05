@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Box, Text } from "ink";
+import { Box, Text, useInput } from "ink";
 import { colors, symbols } from "../theme.js";
 
 interface StartMenuProps {
@@ -21,39 +21,18 @@ export function StartMenu({
     { label: "Exit", action: onExit, icon: "x" },
   ];
 
-  // Handle keyboard input
-  React.useEffect(() => {
-    const handleInput = (data: Buffer) => {
-      const key = data.toString();
-
-      // Arrow up
-      if (key === "\u001B[A") {
-        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : options.length - 1));
-      }
-      // Arrow down
-      else if (key === "\u001B[B") {
-        setSelectedIndex((prev) => (prev < options.length - 1 ? prev + 1 : 0));
-      }
-      // Enter
-      else if (key === "\r" || key === "\n") {
-        options[selectedIndex].action();
-      }
-      // q or ESC
-      else if (key === "q" || key === "\u001B") {
-        onExit();
-      }
-    };
-
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.on("data", handleInput);
-
-    return () => {
-      process.stdin.removeListener("data", handleInput);
-      process.stdin.setRawMode(false);
-      process.stdin.pause();
-    };
-  }, [selectedIndex, onRunScan, onChooseModel, onExit]);
+  // Handle keyboard input using Ink's useInput hook
+  useInput((input, key) => {
+    if (key.upArrow) {
+      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : options.length - 1));
+    } else if (key.downArrow) {
+      setSelectedIndex((prev) => (prev < options.length - 1 ? prev + 1 : 0));
+    } else if (key.return) {
+      options[selectedIndex].action();
+    } else if (input === "q" || key.escape) {
+      onExit();
+    }
+  });
 
   return (
     <Box flexDirection="column" paddingY={1}>

@@ -8,6 +8,7 @@ import {
   ModelProvider,
   AVAILABLE_MODELS,
   ModelConfig,
+  getInstalledOllamaModels,
 } from "../engine/models.js";
 import {
   getDefaultModel,
@@ -29,6 +30,8 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [apiKey, setApiKeyInput] = useState("");
   const [existingKey, setExistingKey] = useState<string | null>(null);
+  const [ollamaModels, setOllamaModels] = useState<string[]>([]);
+  const [loadingOllama, setLoadingOllama] = useState(false);
 
   useEffect(() => {
     loadDefaults();
@@ -59,6 +62,12 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
     if (item.value !== "ollama") {
       const key = await getApiKey(item.value);
       setExistingKey(key || null);
+    } else {
+      // For Ollama, fetch installed models
+      setLoadingOllama(true);
+      const installed = await getInstalledOllamaModels();
+      setOllamaModels(installed);
+      setLoadingOllama(false);
     }
 
     setPhase("model");
@@ -126,7 +135,11 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
   }
 
   if (phase === "model" && selectedProvider) {
-    const models = AVAILABLE_MODELS[selectedProvider];
+    // For Ollama, use installed models; for others, use static list
+    const models =
+      selectedProvider === "ollama" && ollamaModels.length > 0
+        ? ollamaModels
+        : AVAILABLE_MODELS[selectedProvider];
     const modelItems = models.map((m) => ({ label: m, value: m }));
 
     return (
@@ -135,24 +148,43 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
           <Text color="#f2e9e4">Select Model</Text>
         </Box>
 
+        {loadingOllama && (
+          <Box marginBottom={1}>
+            <Text color="#a6adc8">Loading installed Ollama models...</Text>
+          </Box>
+        )}
+
+        {selectedProvider === "ollama" &&
+          ollamaModels.length === 0 &&
+          !loadingOllama && (
+            <Box marginBottom={1} flexDirection="column">
+              <Text color="#f38ba8">No Ollama models found.</Text>
+              <Text color="#a6adc8">
+                Install a model first: ollama pull deepseek-r1:latest
+              </Text>
+            </Box>
+          )}
+
         {existingKey && (
           <Box marginBottom={1}>
             <Text color="#a6e3a1">{symbols.tick} Using saved API key</Text>
           </Box>
         )}
 
-        <SelectInput
-          items={modelItems}
-          onSelect={handleModelSelect}
-          indicatorComponent={({ isSelected }) => (
-            <Text color={isSelected ? "#ff6f54" : "#a6adc8"}>
-              {isSelected ? symbols.pointer : " "}
-            </Text>
-          )}
-          itemComponent={({ isSelected, label }) => (
-            <Text color={isSelected ? "#ff6f54" : "#f2e9e4"}>{label}</Text>
-          )}
-        />
+        {modelItems.length > 0 && (
+          <SelectInput
+            items={modelItems}
+            onSelect={handleModelSelect}
+            indicatorComponent={({ isSelected }) => (
+              <Text color={isSelected ? "#ff6f54" : "#a6adc8"}>
+                {isSelected ? symbols.pointer : " "}
+              </Text>
+            )}
+            itemComponent={({ isSelected, label }) => (
+              <Text color={isSelected ? "#ff6f54" : "#f2e9e4"}>{label}</Text>
+            )}
+          />
+        )}
       </Box>
     );
   }
