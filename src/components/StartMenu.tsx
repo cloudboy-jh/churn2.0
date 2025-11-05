@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Box, Text } from "ink";
-import { theme, symbols } from "../theme.js";
+import { colors, symbols } from "../theme.js";
 
 interface StartMenuProps {
   onRunScan: () => void;
@@ -8,7 +8,11 @@ interface StartMenuProps {
   onExit: () => void;
 }
 
-export function StartMenu({ onRunScan, onChooseModel, onExit }: StartMenuProps) {
+export function StartMenu({
+  onRunScan,
+  onChooseModel,
+  onExit,
+}: StartMenuProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const options = [
@@ -54,20 +58,20 @@ export function StartMenu({ onRunScan, onChooseModel, onExit }: StartMenuProps) 
   return (
     <Box flexDirection="column" paddingY={1}>
       <Box marginBottom={1}>
-        <Text color={theme.text}>What would you like to do?</Text>
+        <Text color={colors.text}>What would you like to do?</Text>
       </Box>
 
       {options.map((option, index) => (
         <Box key={index} marginBottom={1}>
-          <Text color={selectedIndex === index ? theme.primary : theme.gray}>
-            {selectedIndex === index ? symbols.pointer : " "}{" "}
-            {option.icon} {option.label}
+          <Text color={selectedIndex === index ? colors.primary : colors.gray}>
+            {selectedIndex === index ? symbols.pointer : " "} {option.icon}{" "}
+            {option.label}
           </Text>
         </Box>
       ))}
 
       <Box marginTop={1}>
-        <Text color={theme.gray}>
+        <Text color={colors.gray}>
           Use arrow keys to navigate, Enter to select, q to quit
         </Text>
       </Box>

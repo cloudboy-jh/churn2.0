@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.9] - 2025-11-05
+
+### Fixed
+- **Critical:** Fixed `TypeError: color.startsWith is not a function` crash in StartMenu
+- StartMenu component now uses `colors` (hex strings) instead of `theme` (chalk functions) for Ink's Text color prop
+
 ## [2.0.8] - 2025-11-04
 
 ### Added
