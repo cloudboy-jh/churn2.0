@@ -55,16 +55,16 @@ export const progress = {
 
 // Symbols
 export const symbols = {
-  tick: "✓",
-  cross: "✗",
-  pointer: "▸",
-  bullet: "•",
-  ellipsis: "…",
-  line: "─",
-  arrowUp: "↑",
-  arrowDown: "↓",
-  arrowLeft: "←",
-  arrowRight: "→",
+  tick: "+",
+  cross: "x",
+  pointer: ">",
+  bullet: "*",
+  ellipsis: "...",
+  line: "-",
+  arrowUp: "^",
+  arrowDown: "v",
+  arrowLeft: "<",
+  arrowRight: ">",
 } as const;
 
 // Create a bordered box

@@ -16,9 +16,9 @@ export function StartMenu({
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const options = [
-    { label: "Run scan", action: onRunScan, icon: "▶" },
-    { label: "Choose model", action: onChooseModel, icon: "⚙" },
-    { label: "Exit", action: onExit, icon: "✕" },
+    { label: "Run scan", action: onRunScan, icon: ">" },
+    { label: "Choose model", action: onChooseModel, icon: "*" },
+    { label: "Exit", action: onExit, icon: "x" },
   ];
 
   // Handle keyboard input
@@ -49,11 +49,11 @@ export function StartMenu({
     process.stdin.on("data", handleInput);
 
     return () => {
+      process.stdin.removeListener("data", handleInput);
       process.stdin.setRawMode(false);
       process.stdin.pause();
-      process.stdin.removeListener("data", handleInput);
     };
-  }, [selectedIndex, options]);
+  }, [selectedIndex, onRunScan, onChooseModel, onExit]);
 
   return (
     <Box flexDirection="column" paddingY={1}>

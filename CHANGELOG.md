@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.10] - 2025-11-05
+
+### Fixed
+- **Critical:** Fixed arrow key navigation not working in StartMenu interactive menu
+- StartMenu `useEffect` dependency array causing constant re-renders and premature cleanup
+- Immediate exit issue when selecting "Run scan" from interactive menu
+
+### Changed
+- Replaced all emoji/Unicode symbols with ASCII equivalents for better terminal compatibility
+- Updated theme.ts symbols: `✓→+`, `✗→x`, `▸→>`, `•→*`, `…→...`, arrows to `^v<>`
+- Improved stdin cleanup order in StartMenu component
+
 ## [2.0.9] - 2025-11-05
 
 ### Fixed
