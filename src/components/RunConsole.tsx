@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Text, Box } from "ink";
+import { Text, Box, useInput } from "ink";
 import Spinner from "ink-spinner";
 import { theme, createProgressBar, formatDuration, symbols } from "../theme.js";
 import { ModelConfig } from "../engine/models.js";
@@ -32,10 +32,18 @@ export function RunConsole({
   const [startTime] = useState(Date.now());
   const [elapsed, setElapsed] = useState(0);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [waitingForConfirmation, setWaitingForConfirmation] = useState(false);
 
   useEffect(() => {
     runAnalysisProcess();
   }, []);
+
+  // Wait for user to press any key before transitioning to review
+  useInput((input, key) => {
+    if (waitingForConfirmation) {
+      onComplete(result!);
+    }
+  });
 
   // Live timer - updates every second
   useEffect(() => {
@@ -62,7 +70,8 @@ export function RunConsole({
       const report = await generateReport(analysisResult);
       await saveReport(report);
 
-      setTimeout(() => onComplete(analysisResult), 1000);
+      // Wait for user confirmation instead of auto-transitioning
+      setWaitingForConfirmation(true);
     } catch (error) {
       console.error("Analysis failed:", error);
     }
@@ -94,8 +103,8 @@ export function RunConsole({
         <Text color="#f2e9e4"> {getPhaseLabel(progress.phase)}</Text>
       </Box>
 
-      {/* Progress bar */}
-      {progress.total > 0 && (
+      {/* Progress bar - only show during analysis */}
+      {progress.total > 0 && progress.phase !== "complete" && (
         <Box flexDirection="column" marginBottom={1}>
           <Box marginBottom={1}>
             <Text>{createProgressBar(percent, 50)}</Text>
@@ -114,45 +123,52 @@ export function RunConsole({
         </Box>
       )}
 
-      {/* Currently analyzing (parallel batch) */}
-      {progress.currentBatch && progress.currentBatch.length > 0 && (
-        <Box flexDirection="column" marginBottom={1}>
-          <Box marginBottom={1}>
-            <Text color="#a6adc8">
-              Currently analyzing ({progress.inProgress} in progress):
-            </Text>
-          </Box>
-          {progress.currentBatch.map((file, i) => (
-            <Box key={i} paddingLeft={2}>
-              <Text color="#f2e9e4">• {file}</Text>
+      {/* Currently analyzing (parallel batch) - only show during analysis */}
+      {progress.currentBatch &&
+        progress.currentBatch.length > 0 &&
+        progress.phase !== "complete" && (
+          <Box flexDirection="column" marginBottom={1}>
+            <Box marginBottom={1}>
+              <Text color="#a6adc8">
+                Currently analyzing ({progress.inProgress} in progress):
+              </Text>
             </Box>
-          ))}
-        </Box>
-      )}
+            {progress.currentBatch.map((file, i) => (
+              <Box key={i} paddingLeft={2}>
+                <Text color="#f2e9e4">• {file}</Text>
+              </Box>
+            ))}
+          </Box>
+        )}
 
-      {/* Status message */}
-      {progress.message && (
+      {/* Status message - only show during analysis */}
+      {progress.message && progress.phase !== "complete" && (
         <Box marginBottom={1}>
           <Text color="#a6adc8">{progress.message}</Text>
         </Box>
       )}
 
-      {/* Elapsed time and ETA */}
-      <Box marginBottom={1}>
-        <Text color="#a6adc8">
-          Elapsed: {formatDuration(elapsed)}
-          {progress.avgTimePerFile !== undefined &&
-            progress.avgTimePerFile > 0 && (
-              <Text>
+      {/* Elapsed time and ETA - only show during analysis */}
+      {progress.phase !== "complete" && (
+        <Box marginBottom={1}>
+          <Text color="#a6adc8">
+            Elapsed: {formatDuration(elapsed)}
+            {progress.avgTimePerFile !== undefined &&
+              progress.avgTimePerFile > 0 && (
+                <Text>
+                  {" "}
+                  • Avg: {formatDuration(progress.avgTimePerFile)}/file
+                </Text>
+              )}
+            {progress.eta !== undefined && progress.eta > 0 && (
+              <Text color="#8ab4f8">
                 {" "}
-                • Avg: {formatDuration(progress.avgTimePerFile)}/file
+                • ETA: {formatDuration(progress.eta)}
               </Text>
             )}
-          {progress.eta !== undefined && progress.eta > 0 && (
-            <Text color="#8ab4f8"> • ETA: {formatDuration(progress.eta)}</Text>
-          )}
-        </Text>
-      </Box>
+          </Text>
+        </Box>
+      )}
 
       {/* Results summary */}
       {result && progress.phase === "complete" && (
@@ -213,6 +229,17 @@ export function RunConsole({
               Report saved to .churn/reports/churn-reports.json
             </Text>
           </Box>
+
+          {waitingForConfirmation && (
+            <Box
+              marginTop={1}
+              paddingTop={1}
+              borderStyle="single"
+              borderColor="#8ab4f8"
+            >
+              <Text color="#8ab4f8">Press any key to review results...</Text>
+            </Box>
+          )}
         </Box>
       )}
     </Box>

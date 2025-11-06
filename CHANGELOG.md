@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.12] - 2025-11-06
+
+### Fixed
+- **Critical:** AI analysis now provides 2-5 actionable suggestions per file instead of returning zero suggestions
+- **Critical:** Fixed viewport scrolling during analysis - removed console.log/console.error breaking Ink rendering
+- **Critical:** App no longer exits immediately after analysis - waits for user confirmation
+- **Critical:** "Press any key to continue" prompt now works correctly in ReviewPanel
+
+### Changed
+- **AI Prompt:** Rewrote analysis prompt to be more directive and request specific improvements (src/engine/analysis.ts:438-470)
+- **System Message:** Updated to emphasize providing feedback even for well-written code (src/engine/analysis.ts:473-475)
+- **RunConsole:** Added user confirmation step with "Press any key to review results" prompt (src/components/RunConsole.tsx)
+- **ReviewPanel:** Fixed useInput hook to properly listen for keypresses instead of calling onComplete immediately (src/components/ReviewPanel.tsx:18-62)
+- **Viewport:** Analysis progress details now hidden when complete, showing only clean summary (src/components/RunConsole.tsx:105-169)
+
+### Improved
+- Clean single-viewport experience throughout analysis - no console output interference
+- Professional summary display after analysis with clear next-step prompts
+- Better error handling - individual file failures don't crash entire analysis
+- AI now looks for low-severity improvements (readability, documentation, structure) even in good code
+
 ## [2.0.11] - 2025-11-05
 
 ### Fixed

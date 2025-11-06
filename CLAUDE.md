@@ -10,7 +10,7 @@ This file provides essential context for AI assistants (like Claude Code) workin
 
 **Churn 2.0** - AI-assisted code maintenance CLI tool  
 **Published as**: `churn-cli` on npm  
-**Current Version**: 2.0.5  
+**Current Version**: 2.0.12  
 **Repository**: https://github.com/cloudboyjh1/churn2.0
 
 **Core Philosophy:**
@@ -326,8 +326,8 @@ Since this is a CLI tool, **manual testing** is primary:
 
 ## Version Information
 
-**Current Version**: 2.0.5  
-**Next Version**: 2.0.6 (bug fixes, dependency cleanup)
+**Current Version**: 2.0.12  
+**Last Major Update**: Analysis quality improvements, viewport fixes, user confirmation flows
 
 See [`CHANGELOG.md`](./CHANGELOG.md) for version history.
 

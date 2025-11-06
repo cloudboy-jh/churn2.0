@@ -19,6 +19,12 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
   const currentSuggestion = suggestions[currentIndex];
 
   useInput((input, key) => {
+    // Handle zero suggestions case - any key exits
+    if (suggestions.length === 0) {
+      onComplete([]);
+      return;
+    }
+
     if (viewMode === "list") {
       if (key.upArrow) {
         setCurrentIndex(Math.max(0, currentIndex - 1));
@@ -53,12 +59,6 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
         }
         setAcceptedSuggestions(newSet);
       }
-    }
-  });
-
-  useInput(() => {
-    if (suggestions.length === 0) {
-      onComplete([]);
     }
   });
 

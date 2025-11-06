@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Churn 2.0 is a local-first CLI application for AI-assisted code maintenance and refactoring. It analyzes codebases using multiple AI providers (Anthropic Claude, OpenAI GPT, Google Gemini, or local Ollama) and provides interactive review of suggestions.
 
 **Published as**: `churn-cli` on npm (https://www.npmjs.com/package/churn-cli)
-**Current Version**: 2.0.5 (Repository Cleanup & Color Theme Update)
+**Current Version**: 2.0.11
 **Repository**: https://github.com/cloudboyjh1/churn2.0
 
 ## Build & Development Commands
@@ -302,7 +302,7 @@ The following sections were removed from README.md and should be documented in F
 - Detailed model comparison table (VRAM, RAM, Speed, Quality)
 - Hardware requirements:
   - Laptop (8-16 GB RAM) recommendations
-  - Desktop (16-32 GB RAM) recommendations  
+  - Desktop (16-32 GB RAM) recommendations
   - Workstation (32+ GB RAM) recommendations
 - Performance expectations by project size
 - Optimization tips:

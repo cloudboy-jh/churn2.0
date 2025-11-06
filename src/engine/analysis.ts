@@ -438,20 +438,21 @@ Provide your analysis in JSON format with the following structure:
   ]
 }
 
-Focus on:
-- Code quality and maintainability
-- Potential bugs or edge cases
+Your task is to provide 2-5 actionable suggestions for improving this code. Even if the code is well-written, look for opportunities to enhance:
+- Readability and maintainability
+- Error handling and edge cases
 - Performance optimizations
-- Best practices for the language/framework
-- Documentation improvements
+- Code organization and structure
+- Documentation and clarity
+- Best practices and modern patterns
 
-Only include meaningful suggestions. Return an empty array if the code looks good.`;
+Prioritize low-severity improvements if no critical issues exist. Focus on practical changes that make the code easier to understand and maintain. Provide specific, implementable recommendations.`;
 
   const messages: Message[] = [
     {
       role: "system",
       content:
-        "You are an expert code reviewer. Provide concise, actionable feedback in valid JSON format.",
+        "You are an expert code reviewer performing detailed code maintenance analysis. Your goal is to find actionable improvements that will help keep the codebase healthy and maintainable. Always provide thoughtful, specific feedback even for well-written code. Respond with valid JSON only.",
     },
     {
       role: "user",
@@ -483,7 +484,7 @@ Only include meaningful suggestions. Return an empty array if the code looks goo
       code: s.code,
     }));
   } catch (error) {
-    console.error(`Failed to analyze ${relativePath}:`, error);
+    // Return empty suggestions on error - don't break entire analysis
     return [];
   }
 }
@@ -562,12 +563,8 @@ async function analyzeFileWithRetry(
     }
   }
 
-  // All retries failed
-  console.error(
-    `Failed to analyze ${filePath} after ${maxRetries + 1} attempts:`,
-    lastError,
-  );
-  return []; // Return empty suggestions, don't crash the whole analysis
+  // All retries failed - return empty suggestions, don't crash the whole analysis
+  return [];
 }
 
 // Run full analysis with parallel processing
@@ -668,7 +665,7 @@ export async function runAnalysis(
       .catch((error) => {
         completed++;
         inFlight.delete(file);
-        console.error(`Failed to analyze ${relativePath}:`, error);
+        // Silently handle file analysis errors - don't break entire analysis
 
         // Update progress even on error
         const avgTimePerFile =
@@ -723,13 +720,6 @@ export async function runAnalysis(
   }
 
   const duration = Date.now() - startTime;
-
-  // Log cache statistics if verbose
-  if (cacheHits > 0) {
-    console.log(
-      `Cache hits: ${cacheHits}/${total} files (${Math.round((cacheHits / total) * 100)}% saved)`,
-    );
-  }
 
   onProgress?.({
     phase: "complete",
