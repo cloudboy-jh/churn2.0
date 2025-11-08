@@ -205,6 +205,45 @@ export function RunConsole({
             </Text>
           </Box>
 
+          {/* Token and cost summary */}
+          {result.summary.cacheHits > 0 && (
+            <Box marginBottom={1}>
+              <Text color="#f2e9e4">
+                Cache Hits: {theme.success(result.summary.cacheHits.toString())}{" "}
+                <Text color="#a6adc8">
+                  (saved {result.summary.tokensSaved.toLocaleString()} tokens)
+                </Text>
+              </Text>
+            </Box>
+          )}
+
+          {result.summary.tokensUsed > 0 && (
+            <Box flexDirection="column" marginBottom={1}>
+              <Box>
+                <Text color="#f2e9e4">
+                  Tokens:{" "}
+                  {theme.info(result.summary.tokensUsed.toLocaleString())} input
+                </Text>
+              </Box>
+              {result.summary.estimatedCost > 0 && (
+                <Box>
+                  <Text color="#f2e9e4">
+                    Cost:{" "}
+                    {theme.warning(
+                      "$" + result.summary.estimatedCost.toFixed(4),
+                    )}
+                    {result.summary.costSaved > 0 && (
+                      <Text color="#a6adc8">
+                        {" "}
+                        (saved ${result.summary.costSaved.toFixed(4)})
+                      </Text>
+                    )}
+                  </Text>
+                </Box>
+              )}
+            </Box>
+          )}
+
           {/* Categories breakdown */}
           {Object.keys(result.summary.categories).length > 0 && (
             <Box flexDirection="column" marginTop={1}>

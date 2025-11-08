@@ -5,6 +5,13 @@ import crypto from "crypto";
 import { getRepoInfo, getChangedFiles, getAllDiffs } from "./git.js";
 import { ModelConfig, sendPrompt, Message } from "./models.js";
 import { getConcurrency } from "./config.js";
+import {
+  buildPrompt,
+  PROMPT_VERSION,
+  type ProjectContext,
+  type FileInfo,
+} from "./prompts.js";
+import { detectProjectContext, hashProjectContext } from "./context.js";
 
 export interface AnalysisContext {
   mode: "full" | "staged" | "files";
@@ -46,6 +53,11 @@ export interface AnalysisResult {
     suggestions: number;
     categories: Record<string, number>;
     duration: number;
+    cacheHits: number; // NEW: Number of files served from cache
+    tokensUsed: number; // NEW: Approximate tokens used
+    tokensSaved: number; // NEW: Tokens saved by caching
+    estimatedCost: number; // NEW: Estimated cost in USD
+    costSaved: number; // NEW: Cost saved by caching
   };
   suggestions: FileSuggestion[];
   metadata: {
@@ -53,6 +65,8 @@ export interface AnalysisResult {
     model: string;
     provider: string;
     mode: string;
+    projectType?: string; // NEW: Detected project type
+    framework?: string; // NEW: Detected framework
   };
 }
 
@@ -62,6 +76,9 @@ interface CacheEntry {
   lastModified: number;
   model: string;
   provider: string;
+  promptVersion?: string; // NEW: For cache invalidation on prompt changes
+  contextHash?: string; // NEW: For project context invalidation
+  tokenCount?: number; // NEW: For cost tracking
 }
 
 interface AnalysisCache {
@@ -174,6 +191,8 @@ async function getCachedSuggestions(
   modelConfig: ModelConfig,
   cache: AnalysisCache,
   cwd: string = process.cwd(),
+  promptVersion?: string,
+  contextHash?: string,
 ): Promise<FileSuggestion[] | null> {
   const relativePath = path.relative(cwd, filePath);
   const entry = cache.entries[relativePath];
@@ -192,6 +211,20 @@ async function getCachedSuggestions(
     return null;
   }
 
+  // Check if prompt version changed (graceful degradation: old cache without version is still valid)
+  if (
+    promptVersion &&
+    entry.promptVersion &&
+    entry.promptVersion !== promptVersion
+  ) {
+    return null;
+  }
+
+  // Check if project context changed (if context hash is provided)
+  if (contextHash && entry.contextHash && entry.contextHash !== contextHash) {
+    return null;
+  }
+
   // Check if cache is too old (30 days)
   const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
   if (entry.lastModified < thirtyDaysAgo) return null;
@@ -207,6 +240,9 @@ function updateCache(
   suggestions: FileSuggestion[],
   modelConfig: ModelConfig,
   cwd: string = process.cwd(),
+  promptVersion?: string,
+  contextHash?: string,
+  tokenCount?: number,
 ): void {
   const relativePath = path.relative(cwd, filePath);
   const fileHash = hashFileContent(content);
@@ -217,6 +253,9 @@ function updateCache(
     lastModified: Date.now(),
     model: modelConfig.model,
     provider: modelConfig.provider,
+    promptVersion,
+    contextHash,
+    tokenCount,
   };
 }
 
@@ -398,11 +437,12 @@ async function readFileContent(
   }
 }
 
-// Analyze a single file
+// Analyze a single file with adaptive prompts
 async function analyzeFile(
   filePath: string,
   modelConfig: ModelConfig,
   cwd: string,
+  projectContext: ProjectContext,
 ): Promise<FileSuggestion[]> {
   const content = await readFileContent(filePath);
   if (!content) return [];
@@ -410,55 +450,17 @@ async function analyzeFile(
   const relativePath = path.relative(cwd, filePath);
   const ext = path.extname(filePath);
 
-  const prompt = `You are a code review assistant. Analyze the following file and provide actionable suggestions for improvement.
+  // Build file info for adaptive prompt
+  const fileInfo: FileInfo = {
+    path: filePath,
+    relativePath,
+    extension: ext,
+    content,
+    language: getLanguageFromExtension(ext),
+  };
 
-File: ${relativePath}
-Language: ${getLanguageFromExtension(ext)}
-
-\`\`\`${ext.slice(1)}
-${content}
-\`\`\`
-
-Provide your analysis in JSON format with the following structure:
-{
-  "suggestions": [
-    {
-      "category": "refactor|bug|optimization|style|documentation",
-      "severity": "low|medium|high",
-      "title": "Brief title",
-      "description": "Detailed description",
-      "suggestion": "Specific recommendation",
-      "code": {
-        "before": "original code snippet",
-        "after": "improved code snippet",
-        "startLine": 10,
-        "endLine": 15
-      }
-    }
-  ]
-}
-
-Your task is to provide 2-5 actionable suggestions for improving this code. Even if the code is well-written, look for opportunities to enhance:
-- Readability and maintainability
-- Error handling and edge cases
-- Performance optimizations
-- Code organization and structure
-- Documentation and clarity
-- Best practices and modern patterns
-
-Prioritize low-severity improvements if no critical issues exist. Focus on practical changes that make the code easier to understand and maintain. Provide specific, implementable recommendations.`;
-
-  const messages: Message[] = [
-    {
-      role: "system",
-      content:
-        "You are an expert code reviewer performing detailed code maintenance analysis. Your goal is to find actionable improvements that will help keep the codebase healthy and maintainable. Always provide thoughtful, specific feedback even for well-written code. Respond with valid JSON only.",
-    },
-    {
-      role: "user",
-      content: prompt,
-    },
-  ];
+  // Use adaptive prompt system
+  const messages = buildPrompt(fileInfo, projectContext, "full");
 
   try {
     const response = await sendPrompt(modelConfig, messages);
@@ -495,6 +497,8 @@ async function analyzeFileWithRetry(
   modelConfig: ModelConfig,
   cwd: string,
   cache: AnalysisCache,
+  projectContext: ProjectContext,
+  contextHash: string,
   maxRetries: number = 2,
 ): Promise<FileSuggestion[]> {
   // Check cache first
@@ -507,6 +511,8 @@ async function analyzeFileWithRetry(
     modelConfig,
     cache,
     cwd,
+    PROMPT_VERSION,
+    contextHash,
   );
 
   if (cachedSuggestions) {
@@ -518,10 +524,28 @@ async function analyzeFileWithRetry(
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const suggestions = await analyzeFile(filePath, modelConfig, cwd);
+      const suggestions = await analyzeFile(
+        filePath,
+        modelConfig,
+        cwd,
+        projectContext,
+      );
+
+      // Estimate token count (rough approximation)
+      const tokenCount = Math.ceil((content.length + 1000) / 4); // ~4 chars per token
 
       // Update cache with successful result
-      updateCache(cache, filePath, content, suggestions, modelConfig, cwd);
+      updateCache(
+        cache,
+        filePath,
+        content,
+        suggestions,
+        modelConfig,
+        cwd,
+        PROMPT_VERSION,
+        contextHash,
+        tokenCount,
+      );
 
       return suggestions;
     } catch (error: any) {
@@ -595,6 +619,17 @@ export async function runAnalysis(
     message: `Found ${total} files`,
   });
 
+  // Detect project context once (cached for entire analysis session)
+  onProgress?.({
+    phase: "scanning",
+    current: total,
+    total,
+    message: "Detecting project context...",
+  });
+
+  const projectContext = await detectProjectContext(cwd);
+  const contextHash = hashProjectContext(projectContext);
+
   // Load cache and invalidate old entries
   const cache = await loadCache(cwd);
   invalidateOldCache(cache);
@@ -612,6 +647,8 @@ export async function runAnalysis(
   const fileTimes: number[] = [];
   let completed = 0;
   let cacheHits = 0;
+  let totalTokensUsed = 0;
+  let totalTokensSaved = 0;
 
   for (let i = 0; i < prioritizedFiles.length; i++) {
     const file = prioritizedFiles[i];
@@ -624,14 +661,36 @@ export async function runAnalysis(
 
     // Start analyzing this file
     const fileStartTime = Date.now();
-    const promise = analyzeFileWithRetry(file, modelConfig, cwd, cache)
+    const promise = analyzeFileWithRetry(
+      file,
+      modelConfig,
+      cwd,
+      cache,
+      projectContext,
+      contextHash,
+    )
       .then((suggestions) => {
         completed++;
         const fileTime = Date.now() - fileStartTime;
         fileTimes.push(fileTime);
 
         // Track cache hits (fast responses are likely cached)
-        if (fileTime < 100) cacheHits++;
+        const wasCached = fileTime < 100;
+        if (wasCached) {
+          cacheHits++;
+
+          // Track tokens saved by cache
+          const cachedEntry = cache.entries[relativePath];
+          if (cachedEntry?.tokenCount) {
+            totalTokensSaved += cachedEntry.tokenCount;
+          }
+        } else {
+          // Track tokens used for new analysis
+          const cacheEntry = cache.entries[relativePath];
+          if (cacheEntry?.tokenCount) {
+            totalTokensUsed += cacheEntry.tokenCount;
+          }
+        }
 
         allSuggestions.push(...suggestions);
         inFlight.delete(file);
@@ -721,6 +780,22 @@ export async function runAnalysis(
 
   const duration = Date.now() - startTime;
 
+  // Calculate costs
+  // Estimate output tokens as ~20% of input (suggestions are shorter than prompts)
+  const outputTokens = Math.ceil(totalTokensUsed * 0.2);
+  const estimatedCost = calculateCost(
+    modelConfig.provider,
+    modelConfig.model,
+    totalTokensUsed,
+    outputTokens,
+  );
+  const costSaved = calculateCost(
+    modelConfig.provider,
+    modelConfig.model,
+    totalTokensSaved,
+    Math.ceil(totalTokensSaved * 0.2),
+  );
+
   onProgress?.({
     phase: "complete",
     current: total,
@@ -734,6 +809,11 @@ export async function runAnalysis(
       suggestions: allSuggestions.length,
       categories,
       duration,
+      cacheHits,
+      tokensUsed: totalTokensUsed,
+      tokensSaved: totalTokensSaved,
+      estimatedCost,
+      costSaved,
     },
     suggestions: allSuggestions,
     metadata: {
@@ -741,8 +821,62 @@ export async function runAnalysis(
       model: modelConfig.model,
       provider: modelConfig.provider,
       mode: context.mode,
+      projectType: projectContext.type,
+      framework: projectContext.framework,
     },
   };
+}
+
+// Helper: Calculate cost based on provider, model, and token count
+function calculateCost(
+  provider: string,
+  model: string,
+  inputTokens: number,
+  outputTokens: number = 0,
+): number {
+  // Pricing per million tokens (as of 2024)
+  const pricing: Record<
+    string,
+    Record<string, { input: number; output: number }>
+  > = {
+    anthropic: {
+      "claude-opus-4": { input: 15, output: 75 },
+      "claude-sonnet-4": { input: 3, output: 15 },
+      "claude-sonnet-3.5": { input: 3, output: 15 },
+      "claude-sonnet-3-5": { input: 3, output: 15 },
+      "claude-haiku-3.5": { input: 0.8, output: 4 },
+      "claude-haiku-3-5": { input: 0.8, output: 4 },
+      default: { input: 3, output: 15 }, // Default to Sonnet pricing
+    },
+    openai: {
+      "gpt-4-turbo": { input: 10, output: 30 },
+      "gpt-4": { input: 30, output: 60 },
+      "gpt-4o": { input: 5, output: 15 },
+      "gpt-3.5-turbo": { input: 0.5, output: 1.5 },
+      default: { input: 5, output: 15 }, // Default to GPT-4o pricing
+    },
+    google: {
+      "gemini-pro": { input: 0.35, output: 1.05 },
+      "gemini-1.5-pro": { input: 1.25, output: 5 },
+      "gemini-1.5-flash": { input: 0.35, output: 1.05 },
+      default: { input: 0.35, output: 1.05 }, // Default to Flash pricing
+    },
+    ollama: {
+      default: { input: 0, output: 0 }, // Local, free
+    },
+  };
+
+  // Get provider pricing
+  const providerPricing = pricing[provider] || pricing.anthropic;
+
+  // Get model pricing or default
+  const modelPricing = providerPricing[model] || providerPricing.default;
+
+  // Calculate cost per million tokens
+  const inputCost = (inputTokens / 1_000_000) * modelPricing.input;
+  const outputCost = (outputTokens / 1_000_000) * modelPricing.output;
+
+  return inputCost + outputCost;
 }
 
 // Helper: Get language from file extension
