@@ -5,24 +5,24 @@
  * and reduced token usage compared to one-size-fits-all approach.
  */
 
-import type { Message } from './models.js';
+import type { Message } from "./models.js";
 
 // Prompt version for cache invalidation
-export const PROMPT_VERSION = '2.1.0';
+export const PROMPT_VERSION = "2.1.0";
 
 export interface ProjectContext {
   // Primary language/type detected from project root
-  type: 'javascript' | 'typescript' | 'python' | 'rust' | 'go' | 'unknown';
+  type: "javascript" | "typescript" | "python" | "rust" | "go" | "unknown";
 
   // Framework detected (React, Next.js, FastAPI, etc.)
   framework?: string;
 
   // Tools and configurations
   tools: {
-    packageManager?: 'npm' | 'yarn' | 'pnpm' | 'bun';
-    bundler?: 'webpack' | 'vite' | 'rollup' | 'esbuild' | 'turbopack';
-    testFramework?: 'jest' | 'vitest' | 'pytest' | 'cargo-test' | 'go-test';
-    linter?: 'eslint' | 'pylint' | 'clippy' | 'golangci-lint';
+    packageManager?: "npm" | "yarn" | "pnpm" | "bun";
+    bundler?: "webpack" | "vite" | "rollup" | "esbuild" | "turbopack";
+    testFramework?: "jest" | "vitest" | "pytest" | "cargo-test" | "go-test";
+    linter?: "eslint" | "pylint" | "clippy" | "golangci-lint";
   };
 
   // Project conventions
@@ -43,12 +43,16 @@ export interface FileInfo {
   language: string;
 }
 
-export type AnalysisMode = 'full' | 'diff';
+export type AnalysisMode = "full" | "diff";
 
 export interface PromptTemplate {
   version: string;
   system: string;
-  buildUserPrompt: (file: FileInfo, context: ProjectContext, mode: AnalysisMode) => string;
+  buildUserPrompt: (
+    file: FileInfo,
+    context: ProjectContext,
+    mode: AnalysisMode,
+  ) => string;
   focusAreas: string[];
   maxSuggestions: number;
 }
@@ -62,16 +66,17 @@ const typescriptTemplate: PromptTemplate = {
   system: `You are an expert TypeScript/JavaScript code reviewer specializing in modern web development. You understand React, Node.js, and the broader ecosystem. Focus on practical improvements that enhance type safety, performance, and maintainability. Respond with valid JSON only.`,
 
   buildUserPrompt: (file, context, mode) => {
-    const isReact = context.framework?.toLowerCase().includes('react') ||
-                    context.framework?.toLowerCase().includes('next');
-    const isTypeScript = file.extension === '.ts' || file.extension === '.tsx';
+    const isReact =
+      context.framework?.toLowerCase().includes("react") ||
+      context.framework?.toLowerCase().includes("next");
+    const isTypeScript = file.extension === ".ts" || file.extension === ".tsx";
 
     let focusAreas = `
 Focus your analysis on:
-- **Type Safety**: ${isTypeScript ? 'Improve type definitions, avoid any types, use strict null checks' : 'Consider migrating critical code to TypeScript'}
+- **Type Safety**: ${isTypeScript ? "Improve type definitions, avoid any types, use strict null checks" : "Consider migrating critical code to TypeScript"}
 - **Async Patterns**: Promise handling, async/await usage, error boundaries
 - **Modern JavaScript**: Use ES6+ features, optional chaining, nullish coalescing
-- **Performance**: Unnecessary re-renders${isReact ? ', memo/useMemo/useCallback opportunities' : ''}, bundle size considerations`;
+- **Performance**: Unnecessary re-renders${isReact ? ", memo/useMemo/useCallback opportunities" : ""}, bundle size considerations`;
 
     if (isReact) {
       focusAreas += `
@@ -82,8 +87,8 @@ Focus your analysis on:
     return `Analyze this ${file.language} file and provide 3-5 actionable suggestions.
 
 File: ${file.relativePath}
-${context.framework ? `Framework: ${context.framework}` : ''}
-${isTypeScript && context.conventions.typescript ? `TypeScript: ${context.conventions.typescript.strict ? 'Strict mode' : 'Non-strict'}, Target: ${context.conventions.typescript.target}` : ''}
+${context.framework ? `Framework: ${context.framework}` : ""}
+${isTypeScript && context.conventions.typescript ? `TypeScript: ${context.conventions.typescript.strict ? "Strict mode" : "Non-strict"}, Target: ${context.conventions.typescript.target}` : ""}
 
 \`\`\`${file.extension.slice(1)}
 ${file.content}
@@ -112,8 +117,14 @@ Respond in JSON format:
 Prioritize high-impact changes. Be specific and provide working code examples.`;
   },
 
-  focusAreas: ['Type Safety', 'React Hooks', 'Async Patterns', 'Performance', 'Modern JS'],
-  maxSuggestions: 5
+  focusAreas: [
+    "Type Safety",
+    "React Hooks",
+    "Async Patterns",
+    "Performance",
+    "Modern JS",
+  ],
+  maxSuggestions: 5,
 };
 
 /**
@@ -125,9 +136,9 @@ const pythonTemplate: PromptTemplate = {
   system: `You are an expert Python code reviewer with deep knowledge of PEP standards, type hints, and modern Python practices. You understand frameworks like FastAPI, Django, Flask, and async Python. Focus on pythonic solutions and practical improvements. Respond with valid JSON only.`,
 
   buildUserPrompt: (file, context, mode) => {
-    const isFastAPI = context.framework?.toLowerCase().includes('fastapi');
-    const isDjango = context.framework?.toLowerCase().includes('django');
-    const isFlask = context.framework?.toLowerCase().includes('flask');
+    const isFastAPI = context.framework?.toLowerCase().includes("fastapi");
+    const isDjango = context.framework?.toLowerCase().includes("django");
+    const isFlask = context.framework?.toLowerCase().includes("flask");
 
     let focusAreas = `
 Focus your analysis on:
@@ -141,7 +152,7 @@ Focus your analysis on:
 - **${context.framework} Best Practices**: Dependency injection, async endpoints, validation, security`;
     }
 
-    if (file.content.includes('async def')) {
+    if (file.content.includes("async def")) {
       focusAreas += `
 - **Async Patterns**: Proper await usage, async context managers, concurrent execution`;
     }
@@ -149,8 +160,8 @@ Focus your analysis on:
     return `Analyze this Python file and provide 3-5 actionable suggestions.
 
 File: ${file.relativePath}
-${context.framework ? `Framework: ${context.framework}` : ''}
-${context.tools.testFramework ? `Testing: ${context.tools.testFramework}` : ''}
+${context.framework ? `Framework: ${context.framework}` : ""}
+${context.tools.testFramework ? `Testing: ${context.tools.testFramework}` : ""}
 
 \`\`\`python
 ${file.content}
@@ -179,8 +190,14 @@ Respond in JSON format:
 Prefer pythonic solutions. Be specific with PEP references when relevant.`;
   },
 
-  focusAreas: ['Type Hints', 'Pythonic Idioms', 'PEP Compliance', 'Async Patterns', 'Error Handling'],
-  maxSuggestions: 5
+  focusAreas: [
+    "Type Hints",
+    "Pythonic Idioms",
+    "PEP Compliance",
+    "Async Patterns",
+    "Error Handling",
+  ],
+  maxSuggestions: 5,
 };
 
 /**
@@ -195,7 +212,7 @@ const rustTemplate: PromptTemplate = {
     return `Analyze this Rust file and provide 3-5 actionable suggestions.
 
 File: ${file.relativePath}
-${context.framework ? `Framework: ${context.framework}` : ''}
+${context.framework ? `Framework: ${context.framework}` : ""}
 
 \`\`\`rust
 ${file.content}
@@ -230,8 +247,14 @@ Respond in JSON format:
 Reference clippy lints or Rust patterns when applicable. Prioritize safety and idioms.`;
   },
 
-  focusAreas: ['Ownership', 'Error Handling', 'Idiomatic Rust', 'Memory Safety', 'Performance'],
-  maxSuggestions: 5
+  focusAreas: [
+    "Ownership",
+    "Error Handling",
+    "Idiomatic Rust",
+    "Memory Safety",
+    "Performance",
+  ],
+  maxSuggestions: 5,
 };
 
 /**
@@ -246,7 +269,7 @@ const goTemplate: PromptTemplate = {
     return `Analyze this Go file and provide 3-5 actionable suggestions.
 
 File: ${file.relativePath}
-${context.framework ? `Framework: ${context.framework}` : ''}
+${context.framework ? `Framework: ${context.framework}` : ""}
 
 \`\`\`go
 ${file.content}
@@ -281,8 +304,14 @@ Respond in JSON format:
 Follow Effective Go and Go Proverbs. Prioritize correctness and clarity.`;
   },
 
-  focusAreas: ['Error Handling', 'Goroutine Safety', 'Idiomatic Go', 'Standard Library', 'Simplicity'],
-  maxSuggestions: 5
+  focusAreas: [
+    "Error Handling",
+    "Goroutine Safety",
+    "Idiomatic Go",
+    "Standard Library",
+    "Simplicity",
+  ],
+  maxSuggestions: 5,
 };
 
 /**
@@ -299,7 +328,7 @@ const genericTemplate: PromptTemplate = {
 File: ${file.relativePath}
 Language: ${file.language}
 
-\`\`\`${file.extension.slice(1) || 'text'}
+\`\`\`${file.extension.slice(1) || "text"}
 ${file.content}
 \`\`\`
 
@@ -332,8 +361,14 @@ Provide your analysis in JSON format:
 Prioritize practical, implementable changes. Be specific with code examples.`;
   },
 
-  focusAreas: ['Readability', 'Error Handling', 'Best Practices', 'Performance', 'Maintainability'],
-  maxSuggestions: 5
+  focusAreas: [
+    "Readability",
+    "Error Handling",
+    "Best Practices",
+    "Performance",
+    "Maintainability",
+  ],
+  maxSuggestions: 5,
 };
 
 /**
@@ -380,8 +415,8 @@ Respond in JSON format:
 Only report actionable issues. If the config looks fine, return an empty suggestions array.`;
   },
 
-  focusAreas: ['Security', 'Syntax', 'Critical Issues'],
-  maxSuggestions: 2
+  focusAreas: ["Security", "Syntax", "Critical Issues"],
+  maxSuggestions: 2,
 };
 
 /**
@@ -396,7 +431,7 @@ const testTemplate: PromptTemplate = {
     return `Analyze this test file and provide 2-4 suggestions for improving test quality.
 
 File: ${file.relativePath}
-${context.tools.testFramework ? `Framework: ${context.tools.testFramework}` : ''}
+${context.tools.testFramework ? `Framework: ${context.tools.testFramework}` : ""}
 
 \`\`\`${file.extension.slice(1)}
 ${file.content}
@@ -433,52 +468,71 @@ Respond in JSON format:
 Focus on making tests more reliable, readable, and comprehensive.`;
   },
 
-  focusAreas: ['Test Coverage', 'Test Quality', 'Organization', 'Edge Cases'],
-  maxSuggestions: 4
+  focusAreas: ["Test Coverage", "Test Quality", "Organization", "Edge Cases"],
+  maxSuggestions: 4,
 };
 
 /**
  * Select appropriate template based on file type and context
  */
-function selectTemplate(file: FileInfo, context: ProjectContext): PromptTemplate {
+function selectTemplate(
+  file: FileInfo,
+  context: ProjectContext,
+): PromptTemplate {
   const ext = file.extension.toLowerCase();
   const fileName = file.relativePath.toLowerCase();
 
   // Config files get minimal analysis
-  const configExtensions = ['.json', '.yaml', '.yml', '.toml', '.ini', '.env', '.config'];
-  const isConfigFile = configExtensions.includes(ext) ||
-                       fileName.includes('config') ||
-                       fileName.includes('.config.');
+  const configExtensions = [
+    ".json",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".ini",
+    ".env",
+    ".config",
+  ];
+  const isConfigFile =
+    configExtensions.includes(ext) ||
+    fileName.includes("config") ||
+    fileName.includes(".config.");
 
   if (isConfigFile) {
     return configTemplate;
   }
 
   // Test files get test-specific analysis
-  const isTestFile = fileName.includes('.test.') ||
-                     fileName.includes('.spec.') ||
-                     fileName.includes('_test.') ||
-                     fileName.includes('/tests/') ||
-                     fileName.includes('/__tests__/');
+  const isTestFile =
+    fileName.includes(".test.") ||
+    fileName.includes(".spec.") ||
+    fileName.includes("_test.") ||
+    fileName.includes("/tests/") ||
+    fileName.includes("/__tests__/");
 
   if (isTestFile) {
     return testTemplate;
   }
 
   // Language-specific templates
-  if (ext === '.ts' || ext === '.tsx' || ext === '.js' || ext === '.jsx' || ext === '.mjs') {
+  if (
+    ext === ".ts" ||
+    ext === ".tsx" ||
+    ext === ".js" ||
+    ext === ".jsx" ||
+    ext === ".mjs"
+  ) {
     return typescriptTemplate;
   }
 
-  if (ext === '.py' || ext === '.pyi') {
+  if (ext === ".py" || ext === ".pyi") {
     return pythonTemplate;
   }
 
-  if (ext === '.rs') {
+  if (ext === ".rs") {
     return rustTemplate;
   }
 
-  if (ext === '.go') {
+  if (ext === ".go") {
     return goTemplate;
   }
 
@@ -492,19 +546,39 @@ function selectTemplate(file: FileInfo, context: ProjectContext): PromptTemplate
 export function buildPrompt(
   file: FileInfo,
   context: ProjectContext,
-  mode: AnalysisMode = 'full'
+  mode: AnalysisMode = "full",
+  fileDiff?: any, // FileDiff from differential.ts
 ): Message[] {
+  // If mode is 'diff', use specialized diff prompt
+  if (mode === "diff" && fileDiff) {
+    const { buildDiffPrompt } = require("./differential.js");
+    const diffPromptContent = buildDiffPrompt(fileDiff, file.language);
+
+    return [
+      {
+        role: "system",
+        content:
+          "You are an expert code reviewer analyzing changes in a git diff. Focus only on issues introduced by the modifications. Respond with valid JSON only.",
+      },
+      {
+        role: "user",
+        content: diffPromptContent,
+      },
+    ];
+  }
+
+  // Otherwise use adaptive prompt templates
   const template = selectTemplate(file, context);
 
   const messages: Message[] = [
     {
-      role: 'system',
-      content: template.system
+      role: "system",
+      content: template.system,
     },
     {
-      role: 'user',
-      content: template.buildUserPrompt(file, context, mode)
-    }
+      role: "user",
+      content: template.buildUserPrompt(file, context, mode),
+    },
   ];
 
   return messages;
@@ -518,6 +592,6 @@ export function getTemplateInfo(file: FileInfo, context: ProjectContext) {
   return {
     version: template.version,
     focusAreas: template.focusAreas,
-    maxSuggestions: template.maxSuggestions
+    maxSuggestions: template.maxSuggestions,
   };
 }

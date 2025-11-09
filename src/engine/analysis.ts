@@ -12,6 +12,12 @@ import {
   type FileInfo,
 } from "./prompts.js";
 import { detectProjectContext, hashProjectContext } from "./context.js";
+import {
+  getStagedDiff,
+  getFileDiff,
+  shouldUseDiffAnalysis,
+  type FileDiff,
+} from "./differential.js";
 
 export interface AnalysisContext {
   mode: "full" | "staged" | "files";
@@ -443,6 +449,8 @@ async function analyzeFile(
   modelConfig: ModelConfig,
   cwd: string,
   projectContext: ProjectContext,
+  mode: "full" | "diff" = "full",
+  fileDiff?: FileDiff,
 ): Promise<FileSuggestion[]> {
   const content = await readFileContent(filePath);
   if (!content) return [];
@@ -459,8 +467,8 @@ async function analyzeFile(
     language: getLanguageFromExtension(ext),
   };
 
-  // Use adaptive prompt system
-  const messages = buildPrompt(fileInfo, projectContext, "full");
+  // Use adaptive prompt system (pass mode and optional diff)
+  const messages = buildPrompt(fileInfo, projectContext, mode, fileDiff);
 
   try {
     const response = await sendPrompt(modelConfig, messages);
@@ -499,6 +507,8 @@ async function analyzeFileWithRetry(
   cache: AnalysisCache,
   projectContext: ProjectContext,
   contextHash: string,
+  mode: "full" | "diff" = "full",
+  fileDiff?: FileDiff,
   maxRetries: number = 2,
 ): Promise<FileSuggestion[]> {
   // Check cache first
@@ -529,10 +539,23 @@ async function analyzeFileWithRetry(
         modelConfig,
         cwd,
         projectContext,
+        mode,
+        fileDiff,
       );
 
-      // Estimate token count (rough approximation)
-      const tokenCount = Math.ceil((content.length + 1000) / 4); // ~4 chars per token
+      // Estimate token count based on mode
+      let tokenCount: number;
+      if (mode === "diff" && fileDiff) {
+        // Diff mode uses much fewer tokens
+        const diffLines = fileDiff.hunks.reduce(
+          (sum, h) => sum + h.lines.length,
+          0,
+        );
+        tokenCount = Math.ceil((diffLines * 50 + 1000) / 4); // ~50 chars per line + prompt
+      } else {
+        // Full mode
+        tokenCount = Math.ceil((content.length + 1000) / 4); // ~4 chars per token
+      }
 
       // Update cache with successful result
       updateCache(
@@ -630,6 +653,27 @@ export async function runAnalysis(
   const projectContext = await detectProjectContext(cwd);
   const contextHash = hashProjectContext(projectContext);
 
+  // Fetch diffs for staged mode
+  let fileDiffs: Map<string, FileDiff> | null = null;
+  if (context.mode === "staged") {
+    onProgress?.({
+      phase: "scanning",
+      current: total,
+      total,
+      message: "Fetching staged diffs...",
+    });
+
+    try {
+      const diffs = await getStagedDiff(cwd);
+      fileDiffs = new Map(
+        diffs.map((diff) => [path.join(cwd, diff.relativePath), diff]),
+      );
+    } catch (error) {
+      // If we can't get diffs, fall back to full analysis
+      fileDiffs = null;
+    }
+  }
+
   // Load cache and invalidate old entries
   const cache = await loadCache(cwd);
   invalidateOldCache(cache);
@@ -659,6 +703,15 @@ export async function runAnalysis(
       await Promise.race(inFlight.values());
     }
 
+    // Determine if we should use diff mode for this file
+    const fileDiff = fileDiffs?.get(file);
+    const content = await readFileContent(file);
+    const useDiffMode =
+      context.mode === "staged" &&
+      fileDiff &&
+      content &&
+      shouldUseDiffAnalysis(fileDiff, content.length, "staged");
+
     // Start analyzing this file
     const fileStartTime = Date.now();
     const promise = analyzeFileWithRetry(
@@ -668,6 +721,8 @@ export async function runAnalysis(
       cache,
       projectContext,
       contextHash,
+      useDiffMode ? "diff" : "full",
+      useDiffMode ? fileDiff : undefined,
     )
       .then((suggestions) => {
         completed++;
