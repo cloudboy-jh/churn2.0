@@ -33,10 +33,7 @@ export function RunConsole({
   const [elapsed, setElapsed] = useState(0);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [waitingForConfirmation, setWaitingForConfirmation] = useState(false);
-
-  useEffect(() => {
-    runAnalysisProcess();
-  }, []);
+  const [hasStarted, setHasStarted] = useState(false);
 
   // Wait for user to press any key before transitioning to review
   useInput((input, key) => {
@@ -54,28 +51,36 @@ export function RunConsole({
     return () => clearInterval(timer);
   }, [startTime]);
 
-  async function runAnalysisProcess() {
-    try {
-      const analysisResult = await runAnalysis(
-        context,
-        modelConfig,
-        (prog) => setProgress(prog),
-        process.cwd(),
-        concurrency,
-      );
+  // Run analysis only once
+  useEffect(() => {
+    if (hasStarted) return;
+    setHasStarted(true);
 
-      setResult(analysisResult);
+    async function runAnalysisProcess() {
+      try {
+        const analysisResult = await runAnalysis(
+          context,
+          modelConfig,
+          (prog) => setProgress(prog),
+          process.cwd(),
+          concurrency,
+        );
 
-      // Generate and save report
-      const report = await generateReport(analysisResult);
-      await saveReport(report);
+        setResult(analysisResult);
 
-      // Wait for user confirmation instead of auto-transitioning
-      setWaitingForConfirmation(true);
-    } catch (error) {
-      console.error("Analysis failed:", error);
+        // Generate and save report
+        const report = await generateReport(analysisResult);
+        await saveReport(report);
+
+        // Wait for user confirmation instead of auto-transitioning
+        setWaitingForConfirmation(true);
+      } catch (error) {
+        console.error("Analysis failed:", error);
+      }
     }
-  }
+
+    runAnalysisProcess();
+  }, [hasStarted, context, modelConfig, concurrency]);
 
   const percent = progress.total > 0 ? progress.current / progress.total : 0;
 

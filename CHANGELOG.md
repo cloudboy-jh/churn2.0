@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.13] - 2025-11-10
+
+### Fixed
+- **Critical:** Fixed infinite re-rendering bug causing analysis summary to re-initialize 100+ times after completion
+- RunConsole component now uses `hasStarted` state flag to ensure analysis runs exactly once
+- Analysis completion screen now displays cleanly without continuous reloading
+
+### Changed
+- Refactored `useEffect` hook in RunConsole.tsx to prevent multiple executions
+- Improved component stability during timer updates and progress rendering
+
 ## [2.1.1] - 2025-11-09
 
 ### Added
