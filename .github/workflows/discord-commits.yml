@@ -1,0 +1,88 @@
+name: Discord Commit Notifications
+
+on:
+  push:
+    branches:
+      - master
+      - main
+
+jobs:
+  notify-discord:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Discord Notification
+        env:
+          DISCORD_WEBHOOK: "https://discord.com/api/webhooks/1437635244135022653/2kOy_rH3-gm0zlz_r017IrMe6zQRrQhus5-xxVF6vJuEdLIYxfO6cRpCkkDTBVfS0KO3"
+        run: |
+          # Extract commit information
+          COMMIT_MSG=$(echo '${{ github.event.head_commit.message }}' | head -n 1)
+          COMMIT_AUTHOR="${{ github.event.head_commit.author.name }}"
+          COMMIT_SHA="${{ github.sha }}"
+          COMMIT_SHA_SHORT="${COMMIT_SHA:0:7}"
+          REPO_NAME="${{ github.repository }}"
+          BRANCH_NAME="${{ github.ref_name }}"
+          COMMIT_URL="${{ github.event.head_commit.url }}"
+
+          # Escape special characters for JSON
+          COMMIT_MSG_ESCAPED=$(printf '%s' "$COMMIT_MSG" | sed 's/\\/\\\\/g; s/"/\\"/g; s/$/\\n/g' | tr -d '\n')
+          COMMIT_AUTHOR_ESCAPED=$(printf '%s' "$COMMIT_AUTHOR" | sed 's/\\/\\\\/g; s/"/\\"/g')
+
+          # Create timestamp (ISO 8601 format)
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          # Send Discord webhook with error handling
+          RESPONSE=$(curl -w "\n%{http_code}" -s -X POST \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"username\": \"GitHub Commits\",
+              \"avatar_url\": \"https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png\",
+              \"embeds\": [{
+                \"title\": \"📦 New Commit\",
+                \"color\": 16732758,
+                \"fields\": [
+                  {
+                    \"name\": \"Repository\",
+                    \"value\": \"${REPO_NAME}\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"Branch\",
+                    \"value\": \"${BRANCH_NAME}\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"Author\",
+                    \"value\": \"${COMMIT_AUTHOR_ESCAPED}\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"Commit\",
+                    \"value\": \"[\`${COMMIT_SHA_SHORT}\`](${COMMIT_URL})\",
+                    \"inline\": false
+                  },
+                  {
+                    \"name\": \"Message\",
+                    \"value\": \"${COMMIT_MSG_ESCAPED}\",
+                    \"inline\": false
+                  }
+                ],
+                \"timestamp\": \"${TIMESTAMP}\",
+                \"footer\": {
+                  \"text\": \"Churn CLI\"
+                }
+              }]
+            }" \
+            "${DISCORD_WEBHOOK}")
+
+          # Extract HTTP status code
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+          RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+
+          # Validate response
+          if [ "$HTTP_CODE" -eq 204 ] || [ "$HTTP_CODE" -eq 200 ]; then
+            echo "✅ Discord notification sent successfully (HTTP ${HTTP_CODE})"
+          else
+            echo "❌ Error: Discord webhook returned HTTP ${HTTP_CODE}"
+            echo "Response: ${RESPONSE_BODY}"
+            exit 1
+          fi
