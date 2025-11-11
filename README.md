@@ -21,7 +21,7 @@ Open-source • Local-first • Use as-is
 
 - [Why Churn?](#why-churn)
 - [What Churn Finds](#what-churn-finds)
-- [What's New in v2.0.8](#whats-new-in-v208)
+- [What's New in v2.1](#whats-new-in-v21)
 - [Quick Start](#quick-start)
 - [Features](#features)
 - [Installation](#installation)
@@ -44,8 +44,8 @@ Open-source • Local-first • Use as-is
 - **Local-First** - Your code never leaves your machine unless you choose a cloud model
 - **Zero Setup** - Run from any Git repository, no configuration needed to start
 - **Model Freedom** - Use Claude, GPT, Gemini, or run completely offline with Ollama
-- **Production Ready** - v2.0.8 is stable and actively maintained
-- **Cost Conscious** - Smart caching and staged mode reduce API costs by 70-90%
+- **Production Ready** - v2.1+ is stable and actively maintained
+- **Cost Conscious** - Smart caching, adaptive prompts, and staged mode reduce API costs by 70-90%
 - **Beautiful Terminal UI** - Clean, focused interface that doesn't get in your way
 
 Churn respects your workflow, your privacy, and your budget.
@@ -69,14 +69,42 @@ Churn respects your workflow, your privacy, and your budget.
 
 **Common use cases:**
 
+- **Pre-commit checks** - Use `--staged` to analyze only your changes before committing (90% faster)
 - **Cleanup before release** - Find dead code, unused dependencies, and orphaned files
 - **Onboarding new developers** - Generate a "health report" of technical debt
-- **Pre-PR review** - Catch issues before they hit CI/CD
+- **Pre-PR review** - Catch issues before they hit CI/CD with language-specific analysis
 - **Refactoring planning** - Identify high-impact areas to improve
 - **Dependency audits** - Flag outdated or unused packages
 - **Security scanning** - Detect common anti-patterns and vulnerabilities
+- **Framework migration** - Get context-aware suggestions for your specific stack
 
-Churn gives you **actionable insights**, not just observations. Every finding includes context, severity, and suggested fixes.
+Churn gives you **actionable insights**, not just observations. Every finding includes context, severity, and suggested fixes tailored to your language and framework.
+
+---
+
+## What's New in v2.1
+
+**Smarter, Faster, Cheaper Analysis** - Version 2.1 introduces intelligent context-aware analysis and differential staged mode:
+
+**Adaptive Prompts (v2.1.0)**
+- Language-specific analysis tailored to TypeScript/React, Python, Rust, Go, and more
+- Framework detection (Next.js, React, FastAPI, Django) for context-aware suggestions
+- Smart config file handling (0-2 suggestions max, security-focused)
+- Real-time token tracking and cost estimation
+- 30-50% token reduction through focused, relevant prompts
+
+**Differential Analysis (v2.1.1)**
+- Staged mode now analyzes only changed lines, not entire files
+- 70-90% token reduction for `churn run --staged` workflow
+- Perfect for pre-commit checks and pull request reviews
+- Automatic fallback to full analysis when needed
+
+**Stability Improvements (v2.0.13)**
+- Fixed infinite re-rendering bug in analysis summary
+- Clean, single-render completion screen
+- Rock-solid analysis execution
+
+**See [CHANGELOG.md](./CHANGELOG.md) for complete version history.**
 
 ---
 
@@ -107,6 +135,8 @@ That's it. Churn will:
 
 **Want to run locally with zero API costs?** See [Running Locally with Ollama](#running-locally-with-ollama) for setup instructions with free, offline models.
 
+**Cost-conscious?** Churn shows real-time token usage and cost estimation during analysis. Combined with smart caching and staged mode, you can reduce API costs by 70-90% while maintaining high-quality insights.
+
 ---
 
 ## Features
@@ -114,11 +144,13 @@ That's it. Churn will:
 - **Zero-Setup** - Run from any Git repository, no cloning or configuration required
 - **Local-First** - All data stored on your machine under `~/.churn/` and `.churn/`
 - **Multi-Model Support** - Claude, GPT, Gemini, or local Ollama models
+- **Adaptive Analysis** - Language and framework-aware prompts for context-specific suggestions
+- **Differential Mode** - Analyze only changed lines in staged files (70-90% cost savings)
 - **Live Analysis** - Real-time streaming output with progress tracking
 - **Interactive Review** - Navigate and selectively accept suggestions
 - **Export Workflow** - Generate patches, reports, and JSON for downstream tools
 - **Smart Caching** - Content-based caching reduces repeat analysis costs by 70%
-- **Staged Mode** - Analyze only staged files for 80-90% cost savings
+- **Token Tracking** - Real-time cost estimation and transparency
 - **Parallel Processing** - Concurrent file analysis for 10x speed improvements
 - **Beautiful UI** - Clean, vibrant red-themed terminal interface powered by Ink
 
@@ -205,8 +237,6 @@ churn start
 
 Launch interactive menu with options to run analysis, choose model, or exit.
 
-**New in v2.0.8:** `churn start` now provides an interactive menu for a guided experience.
-
 ```bash
 churn start
 ```
@@ -221,14 +251,21 @@ churn start
 Direct code analysis for power users (no interactive menu).
 
 **Options:**
-- `-s, --staged` - Analyze only staged files
+- `-s, --staged` - Analyze only staged files using differential analysis (analyzes only changed lines)
 - `-f, --files <files...>` - Analyze specific files
 - `-c, --concurrency <number>` - Number of files to analyze in parallel (1-50)
 
-**Example:**
+**Examples:**
 ```bash
+# Pre-commit check - analyze only your changes
 git add .
 churn run --staged
+
+# Analyze specific files
+churn run --files src/components/Button.tsx src/utils/helpers.ts
+
+# Full repo scan with higher concurrency
+churn run --concurrency 20
 ```
 
 ### `churn model`
@@ -253,7 +290,11 @@ Review results from the last analysis.
 churn review
 ```
 
-Navigate with arrow keys, press Enter to view details, Space to toggle acceptance.
+**Navigation:**
+- Arrow keys - Navigate between suggestions
+- Enter - View details
+- Space - Toggle acceptance
+- Q - Quit review
 
 ### `churn export`
 
@@ -263,12 +304,17 @@ Export the last analysis to files.
 churn export
 ```
 
-Generates:
-- `suggestions-<timestamp>.json` - JSON format
-- `report-<timestamp>.md` - Markdown report
+**Generated files (saved to `.churn/patches/`):**
+- `suggestions-<timestamp>.json` - Full analysis results in JSON format
+- `report-<timestamp>.md` - Human-readable markdown report with summary
 - `changes-<timestamp>.patch` - Git patch file (if applicable)
 
-All saved to `.churn/patches/`.
+**Analysis summary includes:**
+- Files analyzed and cache hits
+- Tokens used and saved
+- Estimated cost and savings
+- Project type and framework detected
+- All suggestions with severity levels
 
 ### `churn pass`
 
@@ -289,7 +335,7 @@ Outputs the full `churn-reports.json` to stdout for piping.
 
 ```json
 {
-  "version": "2.0.0",
+  "version": "2.1.0",
   "apiKeys": {
     "anthropic": "sk-ant-...",
     "openai": "sk-...",
@@ -301,6 +347,8 @@ Outputs the full `churn-reports.json` to stdout for piping.
   }
 }
 ```
+
+**Note:** Ollama models don't require API keys and run completely locally.
 
 ### API Keys
 
