@@ -3,6 +3,8 @@ import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Ollama } from "ollama";
 import { getApiKey } from "./config.js";
+import * as https from "https";
+import * as http from "http";
 
 export type ModelProvider = "anthropic" | "openai" | "google" | "ollama";
 
@@ -73,7 +75,10 @@ export async function createModelClient(config: ModelConfig) {
     case "anthropic": {
       const key = apiKey || (await getApiKey("anthropic"));
       if (!key) throw new Error("Anthropic API key not found");
-      return new Anthropic({ apiKey: key });
+      return new Anthropic({
+        apiKey: key,
+        httpAgent: new https.Agent({ keepAlive: true }),
+      });
     }
 
     case "openai": {
@@ -154,43 +159,62 @@ async function sendAnthropicPrompt(
   const systemMessage = messages.find((m) => m.role === "system");
   const userMessages = messages.filter((m) => m.role !== "system");
 
-  if (onStream) {
-    let fullContent = "";
-    const stream = await client.messages.stream({
-      model,
-      max_tokens: 4096,
-      system: systemMessage?.content,
-      messages: userMessages.map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
-    });
+  try {
+    if (onStream) {
+      let fullContent = "";
+      const stream = await client.messages.stream({
+        model,
+        max_tokens: 4096,
+        system: systemMessage?.content,
+        messages: userMessages.map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        })),
+      });
 
-    for await (const chunk of stream) {
-      if (
-        chunk.type === "content_block_delta" &&
-        chunk.delta.type === "text_delta"
-      ) {
-        const text = chunk.delta.text;
-        fullContent += text;
-        onStream({ content: text, done: false });
+      for await (const chunk of stream) {
+        if (
+          chunk.type === "content_block_delta" &&
+          chunk.delta.type === "text_delta"
+        ) {
+          const text = chunk.delta.text;
+          fullContent += text;
+          onStream({ content: text, done: false });
+        }
       }
+
+      onStream({ content: "", done: true });
+      return fullContent;
+    } else {
+      const response = await client.messages.create({
+        model,
+        max_tokens: 4096,
+        system: systemMessage?.content,
+        messages: userMessages.map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        })),
+      });
+
+      return response.content[0].type === "text"
+        ? response.content[0].text
+        : "";
     }
-
-    onStream({ content: "", done: true });
-    return fullContent;
-  } else {
-    const response = await client.messages.create({
-      model,
-      max_tokens: 4096,
-      system: systemMessage?.content,
-      messages: userMessages.map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
-    });
-
-    return response.content[0].type === "text" ? response.content[0].text : "";
+  } catch (error: any) {
+    if (error.status === 401) {
+      throw new Error(
+        "Invalid Anthropic API key. Please run 'churn model' to update your API key.",
+      );
+    } else if (error.status === 429) {
+      throw new Error(
+        "Rate limit exceeded. Please wait a moment and try again.",
+      );
+    } else if (error.message?.includes("authentication")) {
+      throw new Error(
+        "Authentication error with Anthropic API. Please check your API key with 'churn model'.",
+      );
+    }
+    throw error;
   }
 }
 
@@ -201,31 +225,44 @@ async function sendOpenAIPrompt(
   messages: Message[],
   onStream?: (chunk: StreamChunk) => void,
 ): Promise<string> {
-  if (onStream) {
-    let fullContent = "";
-    const stream = await client.chat.completions.create({
-      model,
-      messages: messages.map((m) => ({ role: m.role, content: m.content })),
-      stream: true,
-    });
+  try {
+    if (onStream) {
+      let fullContent = "";
+      const stream = await client.chat.completions.create({
+        model,
+        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+        stream: true,
+      });
 
-    for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta?.content;
-      if (delta) {
-        fullContent += delta;
-        onStream({ content: delta, done: false });
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta?.content;
+        if (delta) {
+          fullContent += delta;
+          onStream({ content: delta, done: false });
+        }
       }
+
+      onStream({ content: "", done: true });
+      return fullContent;
+    } else {
+      const response = await client.chat.completions.create({
+        model,
+        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+      });
+
+      return response.choices[0]?.message?.content || "";
     }
-
-    onStream({ content: "", done: true });
-    return fullContent;
-  } else {
-    const response = await client.chat.completions.create({
-      model,
-      messages: messages.map((m) => ({ role: m.role, content: m.content })),
-    });
-
-    return response.choices[0]?.message?.content || "";
+  } catch (error: any) {
+    if (error.status === 401) {
+      throw new Error(
+        "Invalid OpenAI API key. Please run 'churn model' to update your API key.",
+      );
+    } else if (error.status === 429) {
+      throw new Error(
+        "Rate limit exceeded. Please wait a moment and try again.",
+      );
+    }
+    throw error;
   }
 }
 
@@ -241,21 +278,35 @@ async function sendGooglePrompt(
   // Convert messages to Google format
   const prompt = messages.map((m) => `${m.role}: ${m.content}`).join("\n\n");
 
-  if (onStream) {
-    let fullContent = "";
-    const result = await genModel.generateContentStream(prompt);
+  try {
+    if (onStream) {
+      let fullContent = "";
+      const result = await genModel.generateContentStream(prompt);
 
-    for await (const chunk of result.stream) {
-      const text = chunk.text();
-      fullContent += text;
-      onStream({ content: text, done: false });
+      for await (const chunk of result.stream) {
+        const text = chunk.text();
+        fullContent += text;
+        onStream({ content: text, done: false });
+      }
+
+      onStream({ content: "", done: true });
+      return fullContent;
+    } else {
+      const result = await genModel.generateContent(prompt);
+      return result.response.text();
     }
-
-    onStream({ content: "", done: true });
-    return fullContent;
-  } else {
-    const result = await genModel.generateContent(prompt);
-    return result.response.text();
+  } catch (error: any) {
+    if (
+      error.message?.includes("API_KEY") ||
+      error.message?.includes("API key")
+    ) {
+      throw new Error(
+        "Invalid Google API key. Please run 'churn model' to update your API key.",
+      );
+    } else if (error.message?.includes("quota")) {
+      throw new Error("Google API quota exceeded. Please wait and try again.");
+    }
+    throw error;
   }
 }
 

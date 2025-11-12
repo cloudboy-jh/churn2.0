@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import React, { useState, useEffect } from "react";
-import { render, Text, Box } from "ink";
+import { render, Text, Box, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { Command } from "commander";
 import { Logo } from "./components/Logo.js";
@@ -86,6 +86,48 @@ function App({
       return () => clearTimeout(timer);
     }
   }, [phase]);
+
+  // Global keyboard shortcuts
+  useInput((input, key) => {
+    // z = exit application
+    if (input === "z") {
+      process.exit(0);
+    }
+
+    // o = restart (go to start menu)
+    if (input === "o" && phase !== "start" && phase !== "complete") {
+      setPhase("start");
+    }
+
+    // ESC = go back one step
+    if (key.escape && phase !== "complete") {
+      handleGoBack();
+    }
+  });
+
+  function handleGoBack() {
+    // Define phase navigation - go back to previous phase
+    const phaseFlow: Record<AppPhase, AppPhase | null> = {
+      init: null,
+      start: null,
+      model: setupComplete ? "start" : null,
+      confirm: "start",
+      run: "confirm",
+      review: "run",
+      export: "review",
+      ask: "start",
+      "ask-input": "start",
+      complete: null,
+    };
+
+    const previousPhase = phaseFlow[phase];
+    if (previousPhase) {
+      setPhase(previousPhase);
+    } else {
+      // If no previous phase, exit
+      process.exit(0);
+    }
+  }
 
   async function initialize() {
     // Check if in a git repository
@@ -253,24 +295,23 @@ function App({
               setContext({ mode: "full" });
             }
 
-            // Check if model is configured
+            // Check if model is configured and load it
             const complete = await isSetupComplete();
-            if (complete && !modelConfig) {
+            if (complete) {
               const defaultModel = await getDefaultModel();
               if (defaultModel) {
                 setModelConfig({
                   provider: defaultModel.provider,
                   model: defaultModel.model,
                 });
+                // Skip directly to run phase (ConfirmRun component shows confirmation)
+                setPhase("confirm");
+                return;
               }
             }
 
-            // Go to model setup if not configured, otherwise confirm
-            if (!modelConfig) {
-              setPhase("model");
-            } else {
-              setPhase("confirm");
-            }
+            // No model configured, go to model setup
+            setPhase("model");
           }}
           onChooseModel={() => setPhase("model")}
           onExit={() => setPhase("complete")}
@@ -351,6 +392,16 @@ function App({
       {phase === "complete" && (
         <Box marginTop={1}>
           <Text color="#a6e3a1">{symbols.tick} Complete</Text>
+        </Box>
+      )}
+
+      {/* Keyboard shortcuts footer (show on most phases) */}
+      {phase !== "complete" && phase !== "init" && (
+        <Box marginTop={1}>
+          <Text color="#a6adc8" dimColor>
+            {phase !== "start" && "esc (back) · "}
+            {phase !== "start" && "o (start over) · "}z (exit)
+          </Text>
         </Box>
       )}
     </Box>

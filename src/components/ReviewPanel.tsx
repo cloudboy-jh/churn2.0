@@ -19,6 +19,11 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
   const currentSuggestion = suggestions[currentIndex];
 
   useInput((input, key) => {
+    // Global shortcuts
+    if (input === "z") {
+      process.exit(0);
+    }
+
     // Handle zero suggestions case - any key exits
     if (suggestions.length === 0) {
       onComplete([]);

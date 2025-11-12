@@ -13,6 +13,13 @@ export interface ChurnConfig {
     provider: "anthropic" | "openai" | "google" | "ollama";
     model: string;
   };
+  // Remember last selected model per provider
+  lastModelByProvider?: {
+    anthropic?: string;
+    openai?: string;
+    google?: string;
+    ollama?: string;
+  };
   preferences?: {
     autoApply?: boolean;
     verbose?: boolean;
@@ -139,6 +146,36 @@ export async function setDefaultModel(
 ): Promise<void> {
   const config = await loadConfig();
   config.defaultModel = { provider, model };
+
+  // Also remember this as the last model for this provider
+  if (!config.lastModelByProvider) {
+    config.lastModelByProvider = {};
+  }
+  config.lastModelByProvider[provider] = model;
+
+  await saveConfig(config);
+}
+
+// Get last selected model for a specific provider
+export async function getLastModelForProvider(
+  provider: "anthropic" | "openai" | "google" | "ollama",
+): Promise<string | undefined> {
+  const config = await loadConfig();
+  return config.lastModelByProvider?.[provider];
+}
+
+// Set last selected model for a provider (without changing default)
+export async function setLastModelForProvider(
+  provider: "anthropic" | "openai" | "google" | "ollama",
+  model: string,
+): Promise<void> {
+  const config = await loadConfig();
+
+  if (!config.lastModelByProvider) {
+    config.lastModelByProvider = {};
+  }
+  config.lastModelByProvider[provider] = model;
+
   await saveConfig(config);
 }
 

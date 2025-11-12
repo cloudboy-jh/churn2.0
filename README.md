@@ -329,6 +329,30 @@ Outputs the full `churn-reports.json` to stdout for piping.
 
 ---
 
+## Keyboard Shortcuts
+
+Churn includes global keyboard shortcuts that work on every screen:
+
+| Key | Action | Description |
+|-----|--------|-------------|
+| `z` | **Exit** | Exit the application from anywhere |
+| `o` | **Start Over** | Return to the start menu |
+| `esc` | **Go Back** | Go back one step in the workflow |
+| `r` | **Replace Key** | Replace API key (when viewing model selection) |
+
+**Review Panel Shortcuts:**
+- `↑` / `↓` - Navigate between suggestions
+- `Enter` - View suggestion details
+- `Space` - Toggle suggestion acceptance
+- `a` - Accept all suggestions
+- `n` - Accept none (clear all)
+- `d` - Done (proceed to export)
+- `q` - Quit review mode
+
+**Note:** Shortcuts are displayed in the footer on each screen for convenience.
+
+---
+
 ## Configuration
 
 ### Global Config (`~/.churn/config.json`)

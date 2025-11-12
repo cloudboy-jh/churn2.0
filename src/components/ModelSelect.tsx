@@ -15,6 +15,8 @@ import {
   setDefaultModel,
   getApiKey,
   setApiKey,
+  getLastModelForProvider,
+  setLastModelForProvider,
 } from "../engine/config.js";
 
 interface ModelSelectProps {
@@ -37,6 +39,25 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
     loadDefaults();
   }, []);
 
+  // Global keyboard shortcuts (z = exit, r = replace key when applicable)
+  useInput((input, key) => {
+    if (input === "z") {
+      process.exit(0);
+    }
+
+    // Handle 'r' to replace API key (only in model phase with existing key)
+    if (
+      input === "r" &&
+      phase === "model" &&
+      existingKey &&
+      selectedProvider !== "ollama"
+    ) {
+      setExistingKey(null);
+      setApiKeyInput("");
+      setPhase("apiKey");
+    }
+  });
+
   async function loadDefaults() {
     const defaultModel = await getDefaultModel();
     if (defaultModel) {
@@ -58,6 +79,12 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
   async function handleProviderSelect(item: { value: ModelProvider }) {
     setSelectedProvider(item.value);
 
+    // Load last selected model for this provider
+    const lastModel = await getLastModelForProvider(item.value);
+    if (lastModel) {
+      setSelectedModel(lastModel);
+    }
+
     // Check for existing API key (except Ollama)
     if (item.value !== "ollama") {
       const key = await getApiKey(item.value);
@@ -76,10 +103,14 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
   async function handleModelSelect(item: { value: string }) {
     setSelectedModel(item.value);
 
-    // If Ollama or has existing key, complete immediately
-    if (selectedProvider === "ollama" || existingKey) {
-      await completeSelection(item.value, existingKey || "");
+    // If Ollama, complete immediately (no API key needed)
+    if (selectedProvider === "ollama") {
+      await completeSelection(item.value, "");
+    } else if (existingKey) {
+      // Has existing key - complete with it
+      await completeSelection(item.value, existingKey);
     } else {
+      // No existing key - prompt for new one
       setPhase("apiKey");
     }
   }
@@ -100,6 +131,9 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
 
     // Save as default
     await setDefaultModel(selectedProvider, model);
+
+    // Also save as last model for this provider
+    await setLastModelForProvider(selectedProvider, model);
 
     const config: ModelConfig = {
       provider: selectedProvider,
@@ -142,6 +176,11 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
         : AVAILABLE_MODELS[selectedProvider];
     const modelItems = models.map((m) => ({ label: m, value: m }));
 
+    // Find index of last selected model to pre-select it
+    const initialIndex = selectedModel
+      ? modelItems.findIndex((item) => item.value === selectedModel)
+      : -1;
+
     return (
       <Box flexDirection="column" paddingY={1}>
         <Box marginBottom={1}>
@@ -166,14 +205,27 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
           )}
 
         {existingKey && (
+          <Box marginBottom={1} flexDirection="column">
+            <Text color="#a6e3a1">
+              {symbols.tick} Using saved API key (last 4 chars: ...
+              {existingKey.slice(-4)})
+            </Text>
+            <Text color="#a6adc8" dimColor>
+              Press 'r' to replace API key
+            </Text>
+          </Box>
+        )}
+
+        {selectedModel && (
           <Box marginBottom={1}>
-            <Text color="#a6e3a1">{symbols.tick} Using saved API key</Text>
+            <Text color="#8ab4f8">Last used: {selectedModel}</Text>
           </Box>
         )}
 
         {modelItems.length > 0 && (
           <SelectInput
             items={modelItems}
+            initialIndex={initialIndex >= 0 ? initialIndex : 0}
             onSelect={handleModelSelect}
             indicatorComponent={({ isSelected }) => (
               <Text color={isSelected ? "#ff6f54" : "#a6adc8"}>

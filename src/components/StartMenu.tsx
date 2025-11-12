@@ -23,7 +23,9 @@ export function StartMenu({
 
   // Handle keyboard input using Ink's useInput hook
   useInput((input, key) => {
-    if (key.upArrow) {
+    if (input === "z") {
+      process.exit(0);
+    } else if (key.upArrow) {
       setSelectedIndex((prev) => (prev > 0 ? prev - 1 : options.length - 1));
     } else if (key.downArrow) {
       setSelectedIndex((prev) => (prev < options.length - 1 ? prev + 1 : 0));

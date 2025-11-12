@@ -470,8 +470,9 @@ async function analyzeFile(
   // Use adaptive prompt system (pass mode and optional diff)
   const messages = buildPrompt(fileInfo, projectContext, mode, fileDiff);
 
+  let response = "";
   try {
-    const response = await sendPrompt(modelConfig, messages);
+    response = await sendPrompt(modelConfig, messages);
 
     // Extract JSON from response (handle markdown code blocks)
     let jsonStr = response.trim();
@@ -484,6 +485,13 @@ async function analyzeFile(
     const parsed = JSON.parse(jsonStr);
     const suggestions = parsed.suggestions || [];
 
+    // Log if AI returned no suggestions for debugging
+    if (suggestions.length === 0) {
+      console.log(
+        `No suggestions for ${relativePath} - AI response: ${response.substring(0, 200)}...`,
+      );
+    }
+
     return suggestions.map((s: any) => ({
       file: relativePath,
       category: s.category,
@@ -494,6 +502,12 @@ async function analyzeFile(
       code: s.code,
     }));
   } catch (error) {
+    // Log parsing errors to help debug
+    console.error(
+      `Failed to parse AI response for ${relativePath}:`,
+      error instanceof Error ? error.message : error,
+    );
+    console.error(`Response was:`, response.substring(0, 500));
     // Return empty suggestions on error - don't break entire analysis
     return [];
   }

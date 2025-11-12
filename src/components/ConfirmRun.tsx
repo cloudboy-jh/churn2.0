@@ -1,8 +1,8 @@
-import React from 'react';
-import { Text, Box, useInput } from 'ink';
-import { theme, symbols } from '../theme.js';
-import { ModelConfig } from '../engine/models.js';
-import { AnalysisContext } from '../engine/analysis.js';
+import React from "react";
+import { Text, Box, useInput } from "ink";
+import { theme, symbols } from "../theme.js";
+import { ModelConfig } from "../engine/models.js";
+import { AnalysisContext } from "../engine/analysis.js";
 
 interface ConfirmRunProps {
   modelConfig: ModelConfig;
@@ -22,7 +22,9 @@ export function ConfirmRun({
   onCancel,
 }: ConfirmRunProps) {
   useInput((input, key) => {
-    if (key.return) {
+    if (input === "z") {
+      process.exit(0);
+    } else if (key.return) {
       onConfirm();
     } else if (key.escape) {
       onCancel();
@@ -31,13 +33,13 @@ export function ConfirmRun({
 
   const getModeLabel = (ctx: AnalysisContext): string => {
     switch (ctx.mode) {
-      case 'staged':
-        return 'Staged files only';
-      case 'files':
-        return `Specific files: ${ctx.files?.join(', ') || ''}`;
-      case 'full':
+      case "staged":
+        return "Staged files only";
+      case "files":
+        return `Specific files: ${ctx.files?.join(", ") || ""}`;
+      case "full":
       default:
-        return 'Full repository scan';
+        return "Full repository scan";
     }
   };
 
@@ -77,7 +79,7 @@ export function ConfirmRun({
 
         <Box>
           <Text color="#f2e9e4">
-            Model:{' '}
+            Model:{" "}
             <Text color="#ff6f54">
               {modelConfig.provider}/{modelConfig.model}
             </Text>

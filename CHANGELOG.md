@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.14] - 2025-01-11
+
+### Fixed
+- **Critical:** Fixed `getDefaultAgent is not a function` error when running compiled binary
+  - Added explicit `httpAgent` to Anthropic SDK client initialization
+  - Resolves bundling issue with `bun build --compile`
+- **UX:** Fixed redundant model selection on every run
+  - App now properly loads saved model configuration from start menu
+  - Flow is now: Start Menu → Confirm → Run (skips model selection when already configured)
+- **React:** Fixed Hooks order violation in ModelSelect component
+  - Moved all `useInput` hooks to component top level to maintain consistent hook order
+
+### Added
+- **API Key Management:** Added ability to view and replace API keys
+  - Shows last 4 characters of saved API key
+  - Press 'r' to replace/update API key in model selection screen
+  - Helpful for expired or invalid keys
+- **Persistent Model Selection:** Model choice now remembered per provider
+  - Remembers last used model for each provider (Anthropic, OpenAI, Google, Ollama)
+  - Pre-selects last used model when switching providers
+  - Shows "Last used: {model}" hint
+- **Global Keyboard Shortcuts:** Shortcuts now work on every screen
+  - **z** - Exit application from anywhere
+  - **o** - Start over (return to start menu)
+  - **esc** - Go back one step in workflow
+  - Shortcuts work in ModelSelect, StartMenu, ConfirmRun, ReviewPanel, and all other interactive screens
+  - Clean footer displays available shortcuts: `esc (back) · o (start over) · z (exit)`
+- **Better Error Messages:** Improved API error handling across all providers
+  - Authentication errors (401): "Invalid {Provider} API key. Please run 'churn model' to update your API key."
+  - Rate limit errors (429): "Rate limit exceeded. Please wait a moment and try again."
+  - Added try-catch blocks to all AI provider implementations
+
+### Changed
+- **Error Logging:** Enhanced debugging for empty suggestion results
+  - Logs when AI returns no suggestions with response preview
+  - Logs JSON parsing errors with full context
+  - Helps diagnose authentication vs. technical issues
+
+### Developer Experience
+- All keyboard shortcuts centralized and consistent across components
+- Better error messages guide users to solutions
+- Improved component stability with proper React Hooks usage
+
 ## [2.0.13] - 2025-11-10
 
 ### Fixed
