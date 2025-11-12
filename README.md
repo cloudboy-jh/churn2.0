@@ -2,7 +2,7 @@
 
 ![Churn](./assets/churnreadme.png)
 
-**Refactor smarter. From your terminal.**
+**Your agents favorite linting layer.**
 
 Open-source • Local-first • Use as-is
 
