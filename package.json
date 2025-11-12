@@ -1,7 +1,7 @@
 {
   "name": "churn-cli",
   "version": "2.1.2",
-  "description": "AI-assisted developer tool for maintaining and refactoring codebases",
+  "description": "Local-first context intelligence layer for AI agents and code workflows",
   "type": "module",
   "author": "cloudboyjh1",
   "license": "MIT",
@@ -10,6 +10,10 @@
     "url": "git+https://github.com/cloudboyjh1/churn2.0.git"
   },
   "keywords": [
+    "context-layer",
+    "context-engine",
+    "agent-infrastructure",
+    "code-substrate",
     "ai",
     "code-analysis",
     "refactoring",

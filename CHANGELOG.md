@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.1.2] - 2025-01-11
+## [2.1.2] - 2025-01-12
+
+### Changed
+- **Rebranding:** Repositioned Churn from "AI-assisted tool" to "context intelligence layer for AI agents"
+  - Updated main tagline: "Your agents favorite context layer"
+  - Refined messaging to emphasize infrastructure and substrate role rather than assistant framing
+  - Updated package.json description and keywords to reflect positioning as agent infrastructure
+  - Modified system prompts to frame analysis as generating structured findings for downstream tools
+  - UI updates: "Review Suggestions" → "Review Findings", "No suggestions" → "No findings"
+  - Documentation updates across README.md, CLAUDE.md, and docs/development/CLAUDE.md
+  - This is a narrative refinement only - no functional changes to features or capabilities
+
+## [2.1.2-beta] - 2025-01-11
 
 ### Fixed
 - **Critical:** Fixed `getDefaultAgent is not a function` error when running compiled binary

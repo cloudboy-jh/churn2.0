@@ -63,7 +63,7 @@ export interface PromptTemplate {
  */
 const typescriptTemplate: PromptTemplate = {
   version: PROMPT_VERSION,
-  system: `You are an expert TypeScript/JavaScript code reviewer specializing in modern web development. You understand React, Node.js, and the broader ecosystem. Focus on practical improvements that enhance type safety, performance, and maintainability. Respond with valid JSON only.`,
+  system: `You are analyzing TypeScript/JavaScript code to generate structured linting findings for downstream tools and agents. Focus on type safety, performance, and maintainability issues. Output valid JSON only.`,
 
   buildUserPrompt: (file, context, mode) => {
     const isReact =
@@ -133,7 +133,7 @@ Prioritize high-impact changes. Be specific and provide working code examples.`;
  */
 const pythonTemplate: PromptTemplate = {
   version: PROMPT_VERSION,
-  system: `You are an expert Python code reviewer with deep knowledge of PEP standards, type hints, and modern Python practices. You understand frameworks like FastAPI, Django, Flask, and async Python. Focus on pythonic solutions and practical improvements. Respond with valid JSON only.`,
+  system: `You are analyzing Python code to generate structured linting findings for downstream tools and agents. Focus on PEP compliance, type hints, pythonic idioms, and async patterns. Output valid JSON only.`,
 
   buildUserPrompt: (file, context, mode) => {
     const isFastAPI = context.framework?.toLowerCase().includes("fastapi");
@@ -206,7 +206,7 @@ Prefer pythonic solutions. Be specific with PEP references when relevant.`;
  */
 const rustTemplate: PromptTemplate = {
   version: PROMPT_VERSION,
-  system: `You are an expert Rust code reviewer with deep understanding of ownership, borrowing, lifetimes, and the Rust ecosystem. You know common patterns from the Rust Book and clippy best practices. Focus on memory safety, idiomatic Rust, and performance. Respond with valid JSON only.`,
+  system: `You are analyzing Rust code to generate structured linting findings for downstream tools and agents. Focus on ownership, borrowing, error handling, memory safety, and idiomatic patterns. Output valid JSON only.`,
 
   buildUserPrompt: (file, context, mode) => {
     return `Analyze this Rust file and provide 3-5 actionable suggestions.
@@ -263,7 +263,7 @@ Reference clippy lints or Rust patterns when applicable. Prioritize safety and i
  */
 const goTemplate: PromptTemplate = {
   version: PROMPT_VERSION,
-  system: `You are an expert Go code reviewer with deep knowledge of Go idioms, concurrency patterns, and the standard library. You understand effective Go principles and common pitfalls. Focus on simplicity, correctness, and performance. Respond with valid JSON only.`,
+  system: `You are analyzing Go code to generate structured linting findings for downstream tools and agents. Focus on error handling, goroutine safety, idiomatic Go, and standard library usage. Output valid JSON only.`,
 
   buildUserPrompt: (file, context, mode) => {
     return `Analyze this Go file and provide 3-5 actionable suggestions.
@@ -320,7 +320,7 @@ Follow Effective Go and Go Proverbs. Prioritize correctness and clarity.`;
  */
 const genericTemplate: PromptTemplate = {
   version: PROMPT_VERSION,
-  system: `You are an expert code reviewer with broad knowledge across multiple programming languages and paradigms. Focus on universal principles: readability, maintainability, performance, and correctness. Provide thoughtful, language-appropriate suggestions. Respond with valid JSON only.`,
+  system: `You are analyzing code to generate structured linting findings for downstream tools and agents. Focus on readability, maintainability, performance, and language-appropriate best practices. Output valid JSON only.`,
 
   buildUserPrompt: (file, context, mode) => {
     return `Analyze this ${file.language} file and provide 3-5 actionable suggestions for improvement.

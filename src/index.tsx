@@ -277,7 +277,7 @@ function App({
       case "export":
         return "Exporting Results";
       default:
-        return "AI-assisted code maintenance";
+        return "Context intelligence for code";
     }
   };
 
@@ -413,10 +413,8 @@ const program = new Command();
 
 program
   .name("churn")
-  .description(
-    "AI-assisted developer tool for maintaining and refactoring codebases",
-  )
-  .version("2.0.11");
+  .description("Context intelligence layer for AI agents and code workflows")
+  .version("2.1.2");
 
 program
   .command("model")

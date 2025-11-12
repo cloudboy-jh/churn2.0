@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**AI Assistant Guidance for Churn CLI Development**
+**Developer Guidance for Churn CLI Development**
 
 This file provides essential context for AI assistants (like Claude Code) working with this codebase. For comprehensive documentation, see [`docs/development/CLAUDE.md`](./docs/development/CLAUDE.md).
 
@@ -8,9 +8,9 @@ This file provides essential context for AI assistants (like Claude Code) workin
 
 ## Project Overview
 
-**Churn 2.0** - AI-assisted code maintenance CLI tool  
+**Churn 2.0** - Local-first context engine for AI code agents  
 **Published as**: `churn-cli` on npm  
-**Current Version**: 2.0.12  
+**Current Version**: 2.1.2  
 **Repository**: https://github.com/cloudboyjh1/churn2.0
 
 **Core Philosophy:**

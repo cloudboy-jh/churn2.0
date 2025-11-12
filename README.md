@@ -2,7 +2,7 @@
 
 ![Churn](./assets/churnreadme.png)
 
-**Your agents favorite linting layer.**
+**Your agents favorite context layer.**
 
 Open-source • Local-first • Use as-is
 
@@ -36,7 +36,7 @@ Open-source • Local-first • Use as-is
 
 ## Why Churn?
 
-**Built for developers, by developers.** Churn is an AI-assisted CLI tool that helps you maintain and refactor codebases with intelligent analysis—all from your terminal.
+**Built for developers, by developers.** Churn is a context intelligence layer that structures and analyzes code for AI agents and workflows—all from your terminal.
 
 **What makes Churn different:**
 

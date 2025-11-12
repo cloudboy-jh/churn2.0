@@ -72,7 +72,7 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
       <Box flexDirection="column" paddingY={1}>
         <Box marginBottom={1}>
           <Text color="#a6e3a1">
-            {symbols.tick} No suggestions - code looks good!
+            {symbols.tick} No findings - analysis complete!
           </Text>
         </Box>
         <Box>
@@ -93,7 +93,7 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
       <Box flexDirection="column" paddingY={1}>
         <Box marginBottom={1}>
           <Text color="#f2e9e4" bold>
-            Review Suggestions ({acceptedSuggestions.size}/{suggestions.length}{" "}
+            Review Findings ({acceptedSuggestions.size}/{suggestions.length}{" "}
             accepted)
           </Text>
         </Box>
