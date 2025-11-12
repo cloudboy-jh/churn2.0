@@ -10,7 +10,7 @@ This file provides essential context for AI assistants (like Claude Code) workin
 
 **Churn 2.0** - Local-first context engine for AI code agents  
 **Published as**: `churn-cli` on npm  
-**Current Version**: 2.1.2  
+**Current Version**: 2.1.3  
 **Repository**: https://github.com/cloudboyjh1/churn2.0
 
 **Core Philosophy:**

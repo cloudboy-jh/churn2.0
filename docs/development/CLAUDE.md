@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Churn 2.0 is a local-first context intelligence layer for AI code agents and workflows. It structures and analyzes codebases using multiple AI providers (Anthropic Claude, OpenAI GPT, Google Gemini, or local Ollama) and generates structured findings for downstream tools and agents.
 
 **Published as**: `churn-cli` on npm (https://www.npmjs.com/package/churn-cli)
-**Current Version**: 2.1.2
+**Current Version**: 2.1.3
 **Repository**: https://github.com/cloudboyjh1/churn2.0
 
 ## Build & Development Commands

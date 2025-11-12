@@ -1,6 +1,6 @@
 {
   "name": "churn-cli",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "description": "Local-first context intelligence layer for AI agents and code workflows",
   "type": "module",
   "author": "cloudboyjh1",
