@@ -76,20 +76,34 @@ Churn respects your workflow, your privacy, and your budget.
 - **Refactoring planning** - Identify high-impact areas to improve
 - **Dependency audits** - Flag outdated or unused packages
 - **Security scanning** - Detect common anti-patterns and vulnerabilities
-- **Framework migration** - Get context-aware suggestions for your specific stack
+- **Framework migration** - Get context-aware findings for your specific stack
 
 Churn gives you **actionable insights**, not just observations. Every finding includes context, severity, and suggested fixes tailored to your language and framework.
 
 ---
 
-## What's New in v2.1
+## What's New in v2.1.3
 
-**Smarter, Faster, Cheaper Analysis** - Version 2.1 introduces intelligent context-aware analysis and differential staged mode:
+**Context Intelligence Layer for AI Agents** - Version 2.1.3 repositions Churn as infrastructure for AI agents and workflows:
+
+**Rebranding & Narrative Refinement (v2.1.3)**
+- Repositioned from "AI-assisted tool" to "context intelligence layer for AI agents"
+- Emphasizes role as infrastructure and substrate for AI workflows
+- Updated messaging: "Your agents favorite context layer"
+- Reframed UI terminology: "Findings" instead of "Suggestions"
+- No functional changes - purely narrative and positioning updates
+
+**API Key Management & Global Shortcuts (v2.1.2)**
+- View last 4 characters of saved API keys for verification
+- Press 'r' to replace/update API keys in model selection screen
+- Global keyboard shortcuts work on every screen (z=exit, o=start over, esc=back)
+- Persistent model selection remembers last used model per provider
+- Better error messages guide users to solutions for auth and rate limit errors
 
 **Adaptive Prompts (v2.1.0)**
 - Language-specific analysis tailored to TypeScript/React, Python, Rust, Go, and more
-- Framework detection (Next.js, React, FastAPI, Django) for context-aware suggestions
-- Smart config file handling (0-2 suggestions max, security-focused)
+- Framework detection (Next.js, React, FastAPI, Django) for context-aware findings
+- Smart config file handling (0-2 findings max, security-focused)
 - Real-time token tracking and cost estimation
 - 30-50% token reduction through focused, relevant prompts
 
@@ -128,7 +142,7 @@ That's it. Churn will:
 2. Prompt you to select an AI model (first run only)
 3. Show you what it's about to analyze
 4. Stream results in real-time
-5. Let you review and accept/reject suggestions
+5. Let you review and accept/reject findings
 6. Export patches and reports
 
 **First-time users:** Start with `churn start` for an interactive experience. The tool will guide you through model selection and configuration.
@@ -144,10 +158,10 @@ That's it. Churn will:
 - **Zero-Setup** - Run from any Git repository, no cloning or configuration required
 - **Local-First** - All data stored on your machine under `~/.churn/` and `.churn/`
 - **Multi-Model Support** - Claude, GPT, Gemini, or local Ollama models
-- **Adaptive Analysis** - Language and framework-aware prompts for context-specific suggestions
+- **Adaptive Analysis** - Language and framework-aware prompts for context-specific findings
 - **Differential Mode** - Analyze only changed lines in staged files (70-90% cost savings)
 - **Live Analysis** - Real-time streaming output with progress tracking
-- **Interactive Review** - Navigate and selectively accept suggestions
+- **Interactive Review** - Navigate and selectively accept findings
 - **Export Workflow** - Generate patches, reports, and JSON for downstream tools
 - **Smart Caching** - Content-based caching reduces repeat analysis costs by 70%
 - **Token Tracking** - Real-time cost estimation and transparency
@@ -270,13 +284,19 @@ churn run --concurrency 20
 
 ### `churn model`
 
-Select or change your AI model provider.
+Select or change your AI model provider. Your selection is remembered per provider.
 
 ```bash
 churn model
 ```
 
-Supports:
+**Features (v2.1.2+):**
+- Persistent model selection - remembers last used model per provider
+- API key verification - shows last 4 characters of saved key
+- Press 'r' to replace/update API key
+- Pre-selects last used model when switching providers
+
+**Supported Providers:**
 - **Anthropic** (Claude Sonnet 4.5, Opus 4.1, Haiku 4.5, Sonnet 4)
 - **OpenAI** (GPT-5, GPT-5 Mini, GPT-5 Nano, GPT-5 Pro)
 - **Google** (Gemini 2.5 Pro, Gemini 2.5 Flash, Gemini 2.5 Flash-Lite, Gemini 2.0 Flash)
@@ -291,7 +311,7 @@ churn review
 ```
 
 **Navigation:**
-- Arrow keys - Navigate between suggestions
+- Arrow keys - Navigate between findings
 - Enter - View details
 - Space - Toggle acceptance
 - Q - Quit review
@@ -305,7 +325,7 @@ churn export
 ```
 
 **Generated files (saved to `.churn/patches/`):**
-- `suggestions-<timestamp>.json` - Full analysis results in JSON format
+- `findings-<timestamp>.json` - Full analysis results in JSON format
 - `report-<timestamp>.md` - Human-readable markdown report with summary
 - `changes-<timestamp>.patch` - Git patch file (if applicable)
 
@@ -314,7 +334,7 @@ churn export
 - Tokens used and saved
 - Estimated cost and savings
 - Project type and framework detected
-- All suggestions with severity levels
+- All findings with severity levels
 
 ### `churn pass`
 
@@ -322,7 +342,7 @@ Pass the analysis report to another LLM or tool.
 
 ```bash
 churn pass --to claude
-churn pass --to json | jq '.analysis.suggestions'
+churn pass --to json | jq '.analysis.findings'
 ```
 
 Outputs the full `churn-reports.json` to stdout for piping.
@@ -331,7 +351,7 @@ Outputs the full `churn-reports.json` to stdout for piping.
 
 ## Keyboard Shortcuts
 
-Churn includes global keyboard shortcuts that work on every screen:
+Churn includes global keyboard shortcuts that work on every screen (added in v2.1.2):
 
 | Key | Action | Description |
 |-----|--------|-------------|
@@ -341,15 +361,15 @@ Churn includes global keyboard shortcuts that work on every screen:
 | `r` | **Replace Key** | Replace API key (when viewing model selection) |
 
 **Review Panel Shortcuts:**
-- `↑` / `↓` - Navigate between suggestions
-- `Enter` - View suggestion details
-- `Space` - Toggle suggestion acceptance
-- `a` - Accept all suggestions
+- `↑` / `↓` - Navigate between findings
+- `Enter` - View finding details
+- `Space` - Toggle finding acceptance
+- `a` - Accept all findings
 - `n` - Accept none (clear all)
 - `d` - Done (proceed to export)
 - `q` - Quit review mode
 
-**Note:** Shortcuts are displayed in the footer on each screen for convenience.
+**Note:** Shortcuts are displayed in the footer on each screen for convenience. Global shortcuts work consistently across all interactive screens including ModelSelect, StartMenu, ConfirmRun, and ReviewPanel.
 
 ---
 
@@ -359,7 +379,7 @@ Churn includes global keyboard shortcuts that work on every screen:
 
 ```json
 {
-  "version": "2.1.0",
+  "version": "2.1.3",
   "apiKeys": {
     "anthropic": "sk-ant-...",
     "openai": "sk-...",
