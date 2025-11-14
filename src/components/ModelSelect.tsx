@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Text, Box, useInput } from "ink";
 import SelectInput from "ink-select-input";
 import TextInput from "ink-text-input";
@@ -36,114 +36,170 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
   const [loadingOllama, setLoadingOllama] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+    const abortController = new AbortController();
+
+    async function loadDefaults() {
+      try {
+        const defaultModel = await getDefaultModel();
+        if (isMounted && defaultModel) {
+          setSelectedProvider(defaultModel.provider);
+          setSelectedModel(defaultModel.model);
+        }
+      } catch (error) {
+        if (isMounted && !abortController.signal.aborted) {
+          console.error("Failed to load default model:", error);
+        }
+      }
+    }
+
     loadDefaults();
+
+    return () => {
+      isMounted = false;
+      abortController.abort();
+    };
   }, []);
 
   // Global keyboard shortcuts (z = exit, r = replace key when applicable)
-  useInput((input, key) => {
-    if (input === "z") {
-      process.exit(0);
-    }
+  const handleInput = useCallback(
+    (input: string, key: any) => {
+      if (input === "z") {
+        process.exit(0);
+      }
 
-    // Handle 'r' to replace API key (only in model phase with existing key)
-    if (
-      input === "r" &&
-      phase === "model" &&
-      existingKey &&
-      selectedProvider !== "ollama"
-    ) {
-      setExistingKey(null);
-      setApiKeyInput("");
-      setPhase("apiKey");
-    }
-  });
-
-  async function loadDefaults() {
-    const defaultModel = await getDefaultModel();
-    if (defaultModel) {
-      setSelectedProvider(defaultModel.provider);
-      setSelectedModel(defaultModel.model);
-    }
-  }
-
-  const providerItems = [
-    {
-      label: getProviderLabel("anthropic"),
-      value: "anthropic" as ModelProvider,
+      // Handle 'r' to replace API key (only in model phase with existing key)
+      if (
+        input === "r" &&
+        phase === "model" &&
+        existingKey &&
+        selectedProvider !== "ollama"
+      ) {
+        setExistingKey(null);
+        setApiKeyInput("");
+        setPhase("apiKey");
+      }
     },
-    { label: getProviderLabel("openai"), value: "openai" as ModelProvider },
-    { label: getProviderLabel("google"), value: "google" as ModelProvider },
-    { label: getProviderLabel("ollama"), value: "ollama" as ModelProvider },
-  ];
+    [phase, existingKey, selectedProvider],
+  );
 
-  async function handleProviderSelect(item: { value: ModelProvider }) {
-    setSelectedProvider(item.value);
+  useInput(handleInput);
 
-    // Load last selected model for this provider
-    const lastModel = await getLastModelForProvider(item.value);
-    if (lastModel) {
-      setSelectedModel(lastModel);
-    }
+  const providerItems = useMemo(
+    () => [
+      {
+        label: getProviderLabel("anthropic"),
+        value: "anthropic" as ModelProvider,
+      },
+      { label: getProviderLabel("openai"), value: "openai" as ModelProvider },
+      { label: getProviderLabel("google"), value: "google" as ModelProvider },
+      { label: getProviderLabel("ollama"), value: "ollama" as ModelProvider },
+    ],
+    [],
+  );
 
-    // Check for existing API key (except Ollama)
-    if (item.value !== "ollama") {
-      const key = await getApiKey(item.value);
-      setExistingKey(key || null);
-    } else {
-      // For Ollama, fetch installed models
-      setLoadingOllama(true);
-      const installed = await getInstalledOllamaModels();
-      setOllamaModels(installed);
-      setLoadingOllama(false);
-    }
+  const handleProviderSelect = useCallback(
+    async (item: { value: ModelProvider }) => {
+      try {
+        setSelectedProvider(item.value);
 
-    setPhase("model");
-  }
+        // Load last selected model for this provider
+        const lastModel = await getLastModelForProvider(item.value);
+        if (lastModel) {
+          setSelectedModel(lastModel);
+        }
 
-  async function handleModelSelect(item: { value: string }) {
-    setSelectedModel(item.value);
+        // Check for existing API key (except Ollama)
+        if (item.value !== "ollama") {
+          const key = await getApiKey(item.value);
+          setExistingKey(key || null);
+        } else {
+          // For Ollama, fetch installed models
+          setLoadingOllama(true);
+          try {
+            const installed = await getInstalledOllamaModels();
+            setOllamaModels(installed);
+          } catch (error) {
+            console.error("Failed to fetch Ollama models:", error);
+            setOllamaModels([]);
+          } finally {
+            setLoadingOllama(false);
+          }
+        }
 
-    // If Ollama, complete immediately (no API key needed)
-    if (selectedProvider === "ollama") {
-      await completeSelection(item.value, "");
-    } else if (existingKey) {
-      // Has existing key - complete with it
-      await completeSelection(item.value, existingKey);
-    } else {
-      // No existing key - prompt for new one
-      setPhase("apiKey");
-    }
-  }
+        setPhase("model");
+      } catch (error) {
+        console.error("Failed to select provider:", error);
+      }
+    },
+    [],
+  );
 
-  async function handleApiKeySubmit() {
+  const completeSelection = useCallback(
+    async (model: string, key: string) => {
+      if (!selectedProvider) return;
+
+      try {
+        // Save as default
+        await setDefaultModel(selectedProvider, model);
+
+        // Also save as last model for this provider
+        await setLastModelForProvider(selectedProvider, model);
+
+        const config: ModelConfig = {
+          provider: selectedProvider,
+          model,
+          apiKey: key || undefined,
+        };
+
+        setPhase("complete");
+
+        // Use timeout ID to clean up on unmount
+        const timeoutId = setTimeout(() => onComplete(config), 500);
+        return () => clearTimeout(timeoutId);
+      } catch (error) {
+        console.error("Failed to complete selection:", error);
+      }
+    },
+    [selectedProvider, onComplete],
+  );
+
+  const handleModelSelect = useCallback(
+    async (item: { value: string }) => {
+      try {
+        setSelectedModel(item.value);
+
+        // If Ollama, complete immediately (no API key needed)
+        if (selectedProvider === "ollama") {
+          await completeSelection(item.value, "");
+        } else if (existingKey) {
+          // Has existing key - complete with it
+          await completeSelection(item.value, existingKey);
+        } else {
+          // No existing key - prompt for new one
+          setPhase("apiKey");
+        }
+      } catch (error) {
+        console.error("Failed to select model:", error);
+      }
+    },
+    [selectedProvider, existingKey, completeSelection],
+  );
+
+  const handleApiKeySubmit = useCallback(async () => {
     if (!selectedProvider || !selectedModel) return;
 
-    // Save API key
-    if (selectedProvider !== "ollama" && apiKey) {
-      await setApiKey(selectedProvider, apiKey);
+    try {
+      // Save API key
+      if (selectedProvider !== "ollama" && apiKey) {
+        await setApiKey(selectedProvider, apiKey);
+      }
+
+      await completeSelection(selectedModel, apiKey);
+    } catch (error) {
+      console.error("Failed to submit API key:", error);
     }
-
-    await completeSelection(selectedModel, apiKey);
-  }
-
-  async function completeSelection(model: string, key: string) {
-    if (!selectedProvider) return;
-
-    // Save as default
-    await setDefaultModel(selectedProvider, model);
-
-    // Also save as last model for this provider
-    await setLastModelForProvider(selectedProvider, model);
-
-    const config: ModelConfig = {
-      provider: selectedProvider,
-      model,
-      apiKey: key || undefined,
-    };
-
-    setPhase("complete");
-    setTimeout(() => onComplete(config), 500);
-  }
+  }, [selectedProvider, selectedModel, apiKey, completeSelection]);
 
   if (phase === "provider") {
     return (

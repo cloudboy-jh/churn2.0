@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.4] - 2025-01-14
+
+### Fixed
+- **Critical:** Fixed intermittent API timeout errors across all providers
+  - Added explicit timeout configuration: 120s for API requests, 30s for connections
+  - Implemented AbortController pattern for proper request cancellation
+  - Enhanced timeout error detection (AbortError, ETIMEDOUT, ESOCKETTIMEDOUT)
+  - Clear error messages: "Request timeout after Xs. The API is taking too long to respond."
+- **Critical:** Fixed React component memory leaks and race conditions
+  - ModelSelect.tsx: Added useEffect cleanup with isMounted flag and AbortController
+  - ModelSelect.tsx: Fixed setTimeout memory leak by returning cleanup function
+  - ModelSelect.tsx: Fixed race conditions in async config operations
+  - All components: Wrapped async operations in try-catch with proper error handling
+- **Performance:** Optimized React component re-renders
+  - Memoized arrays, objects, and callbacks with useMemo/useCallback
+  - Fixed unnecessary re-renders in ModelSelect, StartMenu, and ConfirmRun
+  - StartMenu: Used stable keys (option.label) instead of array indices
+  - ConfirmRun: Extracted InfoRow component with React.memo to prevent recreations
+
+### Improved
+- **Retry Logic:** Enhanced retry strategy for network failures
+  - Increased maxRetries from 2 to 4 for network/timeout errors
+  - Rate limits: Exponential backoff 2s → 4s → 8s → 10s (capped)
+  - Timeouts/Network: Exponential backoff 1s → 2s → 4s → 5s (capped)
+  - Added comprehensive error detection helpers (isTimeoutError, isNetworkError, isRateLimitError)
+  - Don't retry authentication errors (requires user intervention)
+  - Better error logging when all retries exhausted
+- **Error Detection:** Enhanced network error pattern matching
+  - Now detects: ECONNREFUSED, ECONNRESET, ENOTFOUND, ETIMEDOUT, ESOCKETTIMEDOUT
+  - Added timeout-specific error handling separate from generic network errors
+  - Improved error messages with actionable context
+
+### Added
+- **API Configuration:** SDK-level timeout and retry configuration
+  - Anthropic: 120s request timeout, 30s connection timeout, 3 SDK retries
+  - OpenAI: 120s request timeout, 3 SDK retries
+  - Ollama: 30s timeout for local requests
+  - PromptOptions interface for advanced request control (abortSignal, custom timeout)
+
+### Technical
+- All React hooks now follow consistent order (no conditional hook calls)
+- Replaced hardcoded colors with theme constants throughout
+- Added boundary checks for array access
+- Enhanced type safety with explicit interfaces
+
 ## [2.1.3] - 2025-01-12
 
 ### Changed

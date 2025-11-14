@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import { Text, Box, useInput } from "ink";
-import { theme, symbols } from "../theme.js";
+import { theme, symbols, colors } from "../theme.js";
 import { ModelConfig } from "../engine/models.js";
 import { AnalysisContext } from "../engine/analysis.js";
 
@@ -13,6 +13,20 @@ interface ConfirmRunProps {
   onCancel: () => void;
 }
 
+interface InfoRowProps {
+  label: string;
+  value: string;
+}
+
+// Extracted component for info rows
+const InfoRow = React.memo(({ label, value }: InfoRowProps) => (
+  <Box marginBottom={1}>
+    <Text color={colors.text}>
+      {label}: <Text color={colors.primary}>{value}</Text>
+    </Text>
+  </Box>
+));
+
 export function ConfirmRun({
   modelConfig,
   context,
@@ -21,32 +35,39 @@ export function ConfirmRun({
   onConfirm,
   onCancel,
 }: ConfirmRunProps) {
-  useInput((input, key) => {
-    if (input === "z") {
-      process.exit(0);
-    } else if (key.return) {
-      onConfirm();
-    } else if (key.escape) {
-      onCancel();
-    }
-  });
+  // Memoize input handler
+  const handleInput = useCallback(
+    (input: string, key: any) => {
+      if (input === "z") {
+        process.exit(0);
+      } else if (key.return) {
+        onConfirm();
+      } else if (key.escape) {
+        onCancel();
+      }
+    },
+    [onConfirm, onCancel],
+  );
 
-  const getModeLabel = (ctx: AnalysisContext): string => {
-    switch (ctx.mode) {
+  useInput(handleInput);
+
+  // Memoize mode label calculation
+  const modeLabel = useMemo(() => {
+    switch (context.mode) {
       case "staged":
         return "Staged files only";
       case "files":
-        return `Specific files: ${ctx.files?.join(", ") || ""}`;
+        return `Specific files: ${context.files?.join(", ") || ""}`;
       case "full":
       default:
         return "Full repository scan";
     }
-  };
+  }, [context.mode, context.files]);
 
   return (
     <Box flexDirection="column" paddingY={1}>
       <Box marginBottom={1}>
-        <Text color="#ff6f54" bold>
+        <Text color={colors.primary} bold>
           Ready to Analyze
         </Text>
       </Box>
@@ -57,30 +78,15 @@ export function ConfirmRun({
         paddingX={2}
         paddingY={1}
         borderStyle="single"
-        borderColor="#ff9b85"
+        borderColor={colors.secondary}
       >
-        <Box marginBottom={1}>
-          <Text color="#f2e9e4">
-            Repository: <Text color="#ff6f54">{repoSummary}</Text>
-          </Text>
-        </Box>
-
-        <Box marginBottom={1}>
-          <Text color="#f2e9e4">
-            Files to analyze: <Text color="#ff6f54">{fileCount}</Text>
-          </Text>
-        </Box>
-
-        <Box marginBottom={1}>
-          <Text color="#f2e9e4">
-            Mode: <Text color="#ff6f54">{getModeLabel(context)}</Text>
-          </Text>
-        </Box>
-
+        <InfoRow label="Repository" value={repoSummary} />
+        <InfoRow label="Files to analyze" value={String(fileCount)} />
+        <InfoRow label="Mode" value={modeLabel} />
         <Box>
-          <Text color="#f2e9e4">
+          <Text color={colors.text}>
             Model:{" "}
-            <Text color="#ff6f54">
+            <Text color={colors.primary}>
               {modelConfig.provider}/{modelConfig.model}
             </Text>
           </Text>
@@ -90,15 +96,15 @@ export function ConfirmRun({
       <Box flexDirection="column" marginBottom={1}>
         <Box marginBottom={1}>
           <Text>
-            <Text color="#ff6f54">{symbols.pointer} </Text>
-            <Text color="#f2e9e4">Press Enter to start analysis</Text>
+            <Text color={colors.primary}>{symbols.pointer} </Text>
+            <Text color={colors.text}>Press Enter to start analysis</Text>
           </Text>
         </Box>
 
         <Box>
           <Text>
-            <Text color="#a6adc8">{symbols.pointer} </Text>
-            <Text color="#a6adc8">Press Esc to cancel</Text>
+            <Text color={colors.gray}>{symbols.pointer} </Text>
+            <Text color={colors.gray}>Press Esc to cancel</Text>
           </Text>
         </Box>
       </Box>

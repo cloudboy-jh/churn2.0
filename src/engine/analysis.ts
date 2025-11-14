@@ -472,7 +472,7 @@ async function analyzeFile(
 
   let response = "";
   try {
-    response = await sendPrompt(modelConfig, messages);
+    response = await sendPrompt(modelConfig, messages, undefined);
 
     // Extract JSON from response (handle markdown code blocks)
     let jsonStr = response.trim();
@@ -513,6 +513,34 @@ async function analyzeFile(
   }
 }
 
+// Helper to detect timeout errors
+function isTimeoutError(error: any): boolean {
+  return (
+    error.name === "AbortError" ||
+    error.code === "ETIMEDOUT" ||
+    error.code === "ESOCKETTIMEDOUT" ||
+    error.message?.includes("timeout") ||
+    error.message?.includes("timed out")
+  );
+}
+
+// Helper to detect network errors
+function isNetworkError(error: any): boolean {
+  return (
+    error.message?.includes("ECONNREFUSED") ||
+    error.message?.includes("ECONNRESET") ||
+    error.message?.includes("ENOTFOUND") ||
+    error.message?.includes("fetch failed") ||
+    error.message?.includes("network") ||
+    isTimeoutError(error)
+  );
+}
+
+// Helper to detect rate limit errors
+function isRateLimitError(error: any): boolean {
+  return error.status === 429 || error.message?.includes("rate limit");
+}
+
 // Analyze file with retry logic for rate limits and network errors
 async function analyzeFileWithRetry(
   filePath: string,
@@ -523,7 +551,7 @@ async function analyzeFileWithRetry(
   contextHash: string,
   mode: "full" | "diff" = "full",
   fileDiff?: FileDiff,
-  maxRetries: number = 2,
+  maxRetries: number = 4,
 ): Promise<FileSuggestion[]> {
   // Check cache first
   const content = await readFileContent(filePath);
@@ -588,7 +616,16 @@ async function analyzeFileWithRetry(
     } catch (error: any) {
       lastError = error;
 
-      // Don't retry certain errors
+      // Don't retry authentication errors
+      if (
+        error.status === 401 ||
+        error.message?.includes("API key") ||
+        error.message?.includes("authentication")
+      ) {
+        throw error; // Permanent failure - needs user intervention
+      }
+
+      // Don't retry permanent failures
       if (
         error.message?.includes("file too large") ||
         error.message?.includes("max_tokens")
@@ -596,8 +633,17 @@ async function analyzeFileWithRetry(
         throw error; // Permanent failure
       }
 
-      // Rate limited - exponential backoff
-      if (error.status === 429 || error.message?.includes("rate limit")) {
+      // Rate limited - exponential backoff with longer delays
+      if (isRateLimitError(error)) {
+        if (attempt < maxRetries) {
+          const delay = Math.min(2000 * Math.pow(2, attempt), 10000);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
+        }
+      }
+
+      // Timeout errors - exponential backoff (same as network)
+      if (isTimeoutError(error)) {
         if (attempt < maxRetries) {
           const delay = Math.min(1000 * Math.pow(2, attempt), 5000);
           await new Promise((resolve) => setTimeout(resolve, delay));
@@ -605,14 +651,11 @@ async function analyzeFileWithRetry(
         }
       }
 
-      // Network errors - quick retry
-      if (
-        error.message?.includes("ECONNREFUSED") ||
-        error.message?.includes("ETIMEDOUT") ||
-        error.message?.includes("fetch failed")
-      ) {
+      // Network errors - exponential backoff
+      if (isNetworkError(error)) {
         if (attempt < maxRetries) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
+          const delay = Math.min(1000 * Math.pow(2, attempt), 5000);
+          await new Promise((resolve) => setTimeout(resolve, delay));
           continue;
         }
       }
@@ -624,7 +667,11 @@ async function analyzeFileWithRetry(
     }
   }
 
-  // All retries failed - return empty suggestions, don't crash the whole analysis
+  // All retries failed - log error and return empty suggestions, don't crash the whole analysis
+  console.error(
+    `Failed to analyze ${filePath} after ${maxRetries + 1} attempts:`,
+    lastError instanceof Error ? lastError.message : lastError,
+  );
   return [];
 }
 

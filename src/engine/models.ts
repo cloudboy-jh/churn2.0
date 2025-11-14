@@ -25,6 +25,19 @@ export interface StreamChunk {
   done: boolean;
 }
 
+export interface PromptOptions {
+  onStream?: (chunk: StreamChunk) => void;
+  abortSignal?: AbortSignal;
+  timeout?: number; // milliseconds
+}
+
+// Default timeout configurations
+export const DEFAULT_TIMEOUTS = {
+  connection: 30000, // 30 seconds to establish connection
+  request: 120000, // 2 minutes for API response
+  ollama: 30000, // 30 seconds for local Ollama
+} as const;
+
 export const AVAILABLE_MODELS = {
   anthropic: [
     "claude-sonnet-4-5",
@@ -77,14 +90,23 @@ export async function createModelClient(config: ModelConfig) {
       if (!key) throw new Error("Anthropic API key not found");
       return new Anthropic({
         apiKey: key,
-        httpAgent: new https.Agent({ keepAlive: true }),
+        timeout: DEFAULT_TIMEOUTS.request,
+        maxRetries: 3,
+        httpAgent: new https.Agent({
+          keepAlive: true,
+          timeout: DEFAULT_TIMEOUTS.connection,
+        }),
       });
     }
 
     case "openai": {
       const key = apiKey || (await getApiKey("openai"));
       if (!key) throw new Error("OpenAI API key not found");
-      return new OpenAI({ apiKey: key });
+      return new OpenAI({
+        apiKey: key,
+        timeout: DEFAULT_TIMEOUTS.request,
+        maxRetries: 3,
+      });
     }
 
     case "google": {
@@ -106,47 +128,97 @@ export async function createModelClient(config: ModelConfig) {
 export async function sendPrompt(
   config: ModelConfig,
   messages: Message[],
-  onStream?: (chunk: StreamChunk) => void,
+  options?: PromptOptions,
 ): Promise<string> {
   const client = await createModelClient(config);
   const { provider, model } = config;
 
-  switch (provider) {
-    case "anthropic":
-      return await sendAnthropicPrompt(
-        client as Anthropic,
-        model,
-        messages,
-        onStream,
-      );
+  // Setup timeout with AbortController
+  const timeout =
+    options?.timeout ||
+    (provider === "ollama"
+      ? DEFAULT_TIMEOUTS.ollama
+      : DEFAULT_TIMEOUTS.request);
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => abortController.abort(), timeout);
 
-    case "openai":
-      return await sendOpenAIPrompt(
-        client as OpenAI,
-        model,
-        messages,
-        onStream,
-      );
+  // Combine external abort signal with timeout
+  const combinedSignal = options?.abortSignal
+    ? combineAbortSignals([options.abortSignal, abortController.signal])
+    : abortController.signal;
 
-    case "google":
-      return await sendGooglePrompt(
-        client as GoogleGenerativeAI,
-        model,
-        messages,
-        onStream,
-      );
+  try {
+    let result: string;
 
-    case "ollama":
-      return await sendOllamaPrompt(
-        client as Ollama,
-        model,
-        messages,
-        onStream,
-      );
+    switch (provider) {
+      case "anthropic":
+        result = await sendAnthropicPrompt(
+          client as Anthropic,
+          model,
+          messages,
+          options?.onStream,
+          combinedSignal,
+        );
+        break;
 
-    default:
-      throw new Error(`Unknown provider: ${provider}`);
+      case "openai":
+        result = await sendOpenAIPrompt(
+          client as OpenAI,
+          model,
+          messages,
+          options?.onStream,
+          combinedSignal,
+        );
+        break;
+
+      case "google":
+        result = await sendGooglePrompt(
+          client as GoogleGenerativeAI,
+          model,
+          messages,
+          options?.onStream,
+          combinedSignal,
+        );
+        break;
+
+      case "ollama":
+        result = await sendOllamaPrompt(
+          client as Ollama,
+          model,
+          messages,
+          options?.onStream,
+          combinedSignal,
+        );
+        break;
+
+      default:
+        throw new Error(`Unknown provider: ${provider}`);
+    }
+
+    clearTimeout(timeoutId);
+    return result;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === "AbortError" || combinedSignal.aborted) {
+      throw new Error(
+        `Request timeout after ${timeout / 1000}s. The API is taking too long to respond.`,
+      );
+    }
+    throw error;
   }
+}
+
+// Helper to combine multiple AbortSignals
+function combineAbortSignals(signals: AbortSignal[]): AbortSignal {
+  const controller = new AbortController();
+  for (const signal of signals) {
+    if (signal.aborted) {
+      controller.abort();
+      break;
+    }
+    signal.addEventListener("abort", () => controller.abort(), { once: true });
+  }
+  return controller.signal;
 }
 
 // Anthropic implementation
@@ -155,6 +227,7 @@ async function sendAnthropicPrompt(
   model: string,
   messages: Message[],
   onStream?: (chunk: StreamChunk) => void,
+  abortSignal?: AbortSignal,
 ): Promise<string> {
   const systemMessage = messages.find((m) => m.role === "system");
   const userMessages = messages.filter((m) => m.role !== "system");
@@ -224,6 +297,7 @@ async function sendOpenAIPrompt(
   model: string,
   messages: Message[],
   onStream?: (chunk: StreamChunk) => void,
+  abortSignal?: AbortSignal,
 ): Promise<string> {
   try {
     if (onStream) {
@@ -272,6 +346,7 @@ async function sendGooglePrompt(
   model: string,
   messages: Message[],
   onStream?: (chunk: StreamChunk) => void,
+  abortSignal?: AbortSignal,
 ): Promise<string> {
   const genModel = client.getGenerativeModel({ model });
 
@@ -316,6 +391,7 @@ async function sendOllamaPrompt(
   model: string,
   messages: Message[],
   onStream?: (chunk: StreamChunk) => void,
+  abortSignal?: AbortSignal,
 ): Promise<string> {
   const prompt = messages.map((m) => `${m.role}: ${m.content}`).join("\n\n");
 

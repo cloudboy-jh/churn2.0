@@ -1,7 +1,7 @@
-import fs from 'fs-extra';
-import path from 'path';
-import { ModelConfig, sendPrompt, Message } from '../engine/models.js';
-import { getRepoInfo } from '../engine/git.js';
+import fs from "fs-extra";
+import path from "path";
+import { ModelConfig, sendPrompt, Message } from "../engine/models.js";
+import { getRepoInfo } from "../engine/git.js";
 
 export interface AskContext {
   question: string;
@@ -18,7 +18,7 @@ export interface AskResult {
 // Process a single ask request
 export async function processAsk(
   context: AskContext,
-  onStream?: (chunk: string) => void
+  onStream?: (chunk: string) => void,
 ): Promise<AskResult> {
   const { question, modelConfig } = context;
 
@@ -26,12 +26,12 @@ export async function processAsk(
   const repoInfo = await getRepoInfo();
   const repoContext = repoInfo
     ? `Repository: ${repoInfo.name}\nBranch: ${repoInfo.branch}\nFiles: ${repoInfo.fileCount}`
-    : 'No repository information available';
+    : "No repository information available";
 
   // Build messages
   const messages: Message[] = [
     {
-      role: 'system',
+      role: "system",
       content: `You are an AI assistant helping with code analysis and development questions.
 
 Context:
@@ -40,17 +40,21 @@ ${repoContext}
 Provide concise, accurate answers. Focus on actionable insights.`,
     },
     {
-      role: 'user',
+      role: "user",
       content: question,
     },
   ];
 
   // Send prompt and get response
-  const answer = await sendPrompt(modelConfig, messages, onStream ? (chunk) => {
-    if (!chunk.done && chunk.content) {
-      onStream(chunk.content);
-    }
-  } : undefined);
+  const answer = await sendPrompt(modelConfig, messages, {
+    onStream: onStream
+      ? (chunk) => {
+          if (!chunk.done && chunk.content) {
+            onStream(chunk.content);
+          }
+        }
+      : undefined,
+  });
 
   return {
     question,
@@ -61,16 +65,19 @@ Provide concise, accurate answers. Focus on actionable insights.`,
 }
 
 // Save ask session to disk
-export async function saveAskSession(result: AskResult, cwd: string = process.cwd()): Promise<string> {
-  const reportsDir = path.join(cwd, '.churn', 'reports');
+export async function saveAskSession(
+  result: AskResult,
+  cwd: string = process.cwd(),
+): Promise<string> {
+  const reportsDir = path.join(cwd, ".churn", "reports");
   await fs.ensureDir(reportsDir);
 
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const filename = `ask-session-${timestamp}.json`;
   const filepath = path.join(reportsDir, filename);
 
   const session = {
-    mode: 'ask',
+    mode: "ask",
     ...result,
   };
 
