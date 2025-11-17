@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { Text, Box, useInput } from "ink";
 import { theme, symbols } from "../theme.js";
 import { AnalysisResult, FileSuggestion } from "../engine/analysis.js";
@@ -18,54 +18,59 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
   const suggestions = result.suggestions;
   const currentSuggestion = suggestions[currentIndex];
 
-  useInput((input, key) => {
-    // Global shortcuts
-    if (input === "z") {
-      process.exit(0);
-    }
-
-    // Handle zero suggestions case - any key exits
-    if (suggestions.length === 0) {
-      onComplete([]);
-      return;
-    }
-
-    if (viewMode === "list") {
-      if (key.upArrow) {
-        setCurrentIndex(Math.max(0, currentIndex - 1));
-      } else if (key.downArrow) {
-        setCurrentIndex(Math.min(suggestions.length - 1, currentIndex + 1));
-      } else if (key.return) {
-        setViewMode("detail");
-      } else if (input === "a") {
-        // Accept all
-        const allIndices = new Set(suggestions.map((_, i) => i));
-        setAcceptedSuggestions(allIndices);
-      } else if (input === "n") {
-        // Accept none
-        setAcceptedSuggestions(new Set());
-      } else if (input === "d") {
-        // Done
-        const accepted = suggestions.filter((_, i) =>
-          acceptedSuggestions.has(i),
-        );
-        onComplete(accepted);
+  const handleInput = useCallback(
+    (input: string, key: any) => {
+      // Global shortcuts
+      if (input === "z") {
+        process.exit(0);
       }
-    } else if (viewMode === "detail") {
-      if (key.escape || input === "q") {
-        setViewMode("list");
-      } else if (input === " ") {
-        // Toggle acceptance
-        const newSet = new Set(acceptedSuggestions);
-        if (newSet.has(currentIndex)) {
-          newSet.delete(currentIndex);
-        } else {
-          newSet.add(currentIndex);
+
+      // Handle zero suggestions case - any key exits
+      if (suggestions.length === 0) {
+        onComplete([]);
+        return;
+      }
+
+      if (viewMode === "list") {
+        if (key.upArrow) {
+          setCurrentIndex(Math.max(0, currentIndex - 1));
+        } else if (key.downArrow) {
+          setCurrentIndex(Math.min(suggestions.length - 1, currentIndex + 1));
+        } else if (key.return) {
+          setViewMode("detail");
+        } else if (input === "a") {
+          // Accept all
+          const allIndices = new Set(suggestions.map((_, i) => i));
+          setAcceptedSuggestions(allIndices);
+        } else if (input === "n") {
+          // Accept none
+          setAcceptedSuggestions(new Set());
+        } else if (input === "d") {
+          // Done
+          const accepted = suggestions.filter((_, i) =>
+            acceptedSuggestions.has(i),
+          );
+          onComplete(accepted);
         }
-        setAcceptedSuggestions(newSet);
+      } else if (viewMode === "detail") {
+        if (key.escape || input === "q") {
+          setViewMode("list");
+        } else if (input === " ") {
+          // Toggle acceptance
+          const newSet = new Set(acceptedSuggestions);
+          if (newSet.has(currentIndex)) {
+            newSet.delete(currentIndex);
+          } else {
+            newSet.add(currentIndex);
+          }
+          setAcceptedSuggestions(newSet);
+        }
       }
-    }
-  });
+    },
+    [viewMode, currentIndex, suggestions, acceptedSuggestions, onComplete],
+  );
+
+  useInput(handleInput);
 
   if (suggestions.length === 0) {
     return (
@@ -83,8 +88,9 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
   }
 
   if (viewMode === "list") {
-    // Calculate viewport window (show 10 items at a time)
-    const windowSize = 10;
+    // Calculate viewport window (adaptive based on terminal size)
+    const terminalHeight = process.stdout.rows || 24;
+    const windowSize = Math.max(10, terminalHeight - 15); // Leave room for header/footer
     const windowStart = Math.floor(currentIndex / windowSize) * windowSize;
     const windowEnd = Math.min(windowStart + windowSize, suggestions.length);
     const visibleSuggestions = suggestions.slice(windowStart, windowEnd);

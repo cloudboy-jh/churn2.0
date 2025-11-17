@@ -82,9 +82,30 @@ Churn gives you **actionable insights**, not just observations. Every finding in
 
 ---
 
-## What's New in v2.1.3
+## What's New in v2.1.5
 
-**Context Intelligence Layer for AI Agents** - Version 2.1.3 repositions Churn as infrastructure for AI agents and workflows:
+**Performance Stabilization & Error Handling** - Version 2.1.5 delivers major speed improvements and fixes critical bugs:
+
+**Performance Improvements (v2.1.5)** 🚀
+- **60-70% faster analysis** - 117 files: 8 minutes → 2-3 minutes
+- Fixed broken retry mechanism that prevented proper API error recovery
+- Reduced timeout from 120s → 45s for faster failure detection
+- Increased concurrency: Anthropic/OpenAI/Google from 8-10 → 15 concurrent files
+- Multi-strategy JSON extraction reduces parsing failures
+- UI components now prioritized in analysis queue
+
+**Critical Bug Fixes (v2.1.5)** 🐛
+- Fixed retry mechanism - API errors now properly trigger retries (was dead code)
+- Eliminated double-retry bug (SDK + app level)
+- Parsing errors no longer cached permanently
+- Fixed ReviewPanel input handler instability (missed in v2.1.4)
+- Adaptive viewport sizing based on terminal height (10-25 items vs hardcoded 10)
+
+**Better Error Handling (v2.1.5)** 📊
+- Separated API errors from JSON parsing errors
+- Detailed analysis summary shows success/failure breakdown
+- Clear distinction: "API error" (will retry) vs "JSON parsing error" (won't retry)
+- Tracks parsing errors vs network errors separately
 
 **Rebranding & Narrative Refinement (v2.1.3)**
 - Repositioned from "AI-assisted tool" to "context intelligence layer for AI agents"

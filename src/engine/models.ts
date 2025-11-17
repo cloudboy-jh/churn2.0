@@ -34,7 +34,7 @@ export interface PromptOptions {
 // Default timeout configurations
 export const DEFAULT_TIMEOUTS = {
   connection: 30000, // 30 seconds to establish connection
-  request: 120000, // 2 minutes for API response
+  request: 45000, // 45 seconds for API response (reduced from 120s)
   ollama: 30000, // 30 seconds for local Ollama
 } as const;
 
@@ -91,7 +91,7 @@ export async function createModelClient(config: ModelConfig) {
       return new Anthropic({
         apiKey: key,
         timeout: DEFAULT_TIMEOUTS.request,
-        maxRetries: 3,
+        maxRetries: 0, // Let app-level retry logic handle retries
         httpAgent: new https.Agent({
           keepAlive: true,
           timeout: DEFAULT_TIMEOUTS.connection,
@@ -105,7 +105,7 @@ export async function createModelClient(config: ModelConfig) {
       return new OpenAI({
         apiKey: key,
         timeout: DEFAULT_TIMEOUTS.request,
-        maxRetries: 3,
+        maxRetries: 0, // Let app-level retry logic handle retries
       });
     }
 

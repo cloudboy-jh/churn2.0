@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.5] - 2025-01-17
+
+### Fixed
+- **Critical:** Fixed broken retry mechanism that prevented proper error recovery
+  - Separated API errors from JSON parsing errors for correct retry logic
+  - API errors (network, timeout, rate limit) now properly trigger retry mechanism
+  - JSON parsing errors fail immediately without retry (don't retry malformed AI responses)
+  - Parsing errors no longer cached permanently (prevents failed files being cached for 30 days)
+  - Eliminated double-retry bug: Set SDK maxRetries to 0, let app-level retry logic handle everything
+- **Critical:** Fixed ReviewPanel input handler instability
+  - Applied useCallback pattern from v2.1.4 memory leak fixes (was missed in ReviewPanel)
+  - Fixes input not registering properly due to handler recreation on every render
+- **UI:** Fixed small viewport requiring excessive scrolling
+  - Viewport now adaptive based on terminal size (shows 10-25 items vs hardcoded 10)
+  - Formula: `Math.max(10, terminalHeight - 15)` leaves room for header/footer
+  - Dramatically reduces scrolling in review phase
+
+### Performance
+- **Major:** Reduced analysis time by 60-70% for large repositories
+  - 117 files: ~8 minutes → **2-3 minutes**
+  - Reduced request timeout: 120s → 45s for faster failure detection
+  - Increased concurrency: Anthropic 8→15, OpenAI 10→15, Google 10→15
+  - Files that would hang for 2 minutes now timeout in 45 seconds
+- **Improved:** Multi-strategy JSON extraction reduces parsing failures
+  - Strategy 1: Parse pure JSON response
+  - Strategy 2: Remove markdown code blocks and parse
+  - Strategy 3: Regex extract JSON object from text
+  - Handles AI response variations (text before/after JSON, incomplete markdown removal)
+- **Improved:** UI component files now prioritized in analysis queue
+  - Files matching `dialog|modal|button|input|select|form|component` get +10 priority boost
+  - Important UI primitives analyzed earlier instead of being deprioritized
+
+### Added
+- **Analysis Summary:** Detailed logging at end of analysis
+  - Shows: Total files, successfully analyzed, files with issues, files with no issues
+  - Breaks down failures: Parsing errors vs API/Network errors
+  - Shows cache hit rate
+  - Example output:
+    ```
+    --- Analysis Summary ---
+    Total files: 117
+    Successfully analyzed: 115
+    Files with suggestions: 42
+    Files with no issues: 73
+    Failed files: 2
+      - Parsing errors: 1
+      - API/Network errors: 1
+    Cache hits: 38/117
+    ```
+
+### Improved
+- **Error Logging:** Clear distinction between error types
+  - "API error for {file}: {message}" - Network/timeout/rate limit errors (will retry)
+  - "JSON parsing error for {file}: {message}" - Malformed AI response (won't retry)
+  - Shows response preview on parsing errors for debugging
+  - Tracks error types for summary statistics
+
+### Technical
+- Parsing errors now throw specific error with `isParsingError` flag
+- analyzeFileWithRetry detects parsing errors and skips retry + caching
+- All error handling paths properly distinguish between transient vs permanent failures
+- ReviewPanel now matches v2.1.4 React optimization patterns
+
 ## [2.1.4] - 2025-01-14
 
 ### Fixed

@@ -221,13 +221,13 @@ export async function getConcurrency(
     return Math.max(1, Math.min(50, userSetting)); // Clamp to 1-50
   }
 
-  // Smart defaults based on provider
+  // Smart defaults based on provider (increased for better performance)
   if (provider) {
     const providerDefaults: Record<string, number> = {
       ollama: 20, // Local, can handle more
-      openai: 10, // Generous rate limits
-      anthropic: 8, // More conservative
-      google: 10, // Good limits
+      openai: 15, // Generous rate limits (increased from 10)
+      anthropic: 15, // Improved from 8 for faster analysis
+      google: 15, // Good limits (increased from 10)
     };
     return providerDefaults[provider] || 10;
   }

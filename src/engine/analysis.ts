@@ -385,6 +385,10 @@ function prioritizeFiles(
         priority += 10;
       if (basename.includes("test.") || basename.includes(".test."))
         priority -= 5;
+
+      // 4. UI component priority boost
+      if (basename.match(/dialog|modal|button|input|select|form|component/i))
+        priority += 10; // Boost important UI primitives
     } catch (error) {
       // If we can't stat the file, give it default priority
     }
@@ -471,18 +475,45 @@ async function analyzeFile(
   const messages = buildPrompt(fileInfo, projectContext, mode, fileDiff);
 
   let response = "";
+
+  // API call - let network/timeout/rate limit errors bubble up for retry logic
   try {
     response = await sendPrompt(modelConfig, messages, undefined);
+  } catch (error) {
+    // API error - log it and rethrow to trigger retry mechanism
+    console.error(
+      `API error for ${relativePath}:`,
+      error instanceof Error ? error.message : error,
+    );
+    throw error; // Let analyzeFileWithRetry handle this
+  }
 
-    // Extract JSON from response (handle markdown code blocks)
+  // JSON parsing - handle separately from API errors
+  try {
+    // Extract JSON from response (multi-strategy approach)
     let jsonStr = response.trim();
+
+    // Strategy 1: Remove markdown code blocks
     if (jsonStr.startsWith("```json")) {
       jsonStr = jsonStr.replace(/```json\n?/g, "").replace(/```\n?$/g, "");
     } else if (jsonStr.startsWith("```")) {
       jsonStr = jsonStr.replace(/```\n?/g, "");
     }
 
-    const parsed = JSON.parse(jsonStr);
+    let parsed;
+    try {
+      // Strategy 2: Parse cleaned response
+      parsed = JSON.parse(jsonStr);
+    } catch {
+      // Strategy 3: Try to extract JSON object from text
+      const match = response.match(/\{[\s\S]*"suggestions"[\s\S]*\}/);
+      if (match) {
+        parsed = JSON.parse(match[0]);
+      } else {
+        throw new Error("No valid JSON found in response");
+      }
+    }
+
     const suggestions = parsed.suggestions || [];
 
     // Log if AI returned no suggestions for debugging
@@ -502,14 +533,18 @@ async function analyzeFile(
       code: s.code,
     }));
   } catch (error) {
-    // Log parsing errors to help debug
+    // JSON parsing error - log and throw a specific error (don't retry bad JSON, don't cache)
     console.error(
-      `Failed to parse AI response for ${relativePath}:`,
+      `JSON parsing error for ${relativePath}:`,
       error instanceof Error ? error.message : error,
     );
     console.error(`Response was:`, response.substring(0, 500));
-    // Return empty suggestions on error - don't break entire analysis
-    return [];
+    // Throw a parsing error that won't be retried but also won't be cached
+    const parsingError = new Error(
+      `JSON parsing failed: ${error instanceof Error ? error.message : error}`,
+    );
+    (parsingError as any).isParsingError = true; // Mark as parsing error
+    throw parsingError;
   }
 }
 
@@ -615,6 +650,12 @@ async function analyzeFileWithRetry(
       return suggestions;
     } catch (error: any) {
       lastError = error;
+
+      // Don't retry or cache parsing errors - AI returned malformed JSON
+      if (error.isParsingError) {
+        console.error(`Skipping ${filePath} due to parsing error (not cached)`);
+        return []; // Return empty without caching
+      }
 
       // Don't retry authentication errors
       if (
@@ -754,6 +795,9 @@ export async function runAnalysis(
   let cacheHits = 0;
   let totalTokensUsed = 0;
   let totalTokensSaved = 0;
+  let failedFiles = 0;
+  let parsingErrors = 0;
+  let filesWithNoIssues = 0;
 
   for (let i = 0; i < prioritizedFiles.length; i++) {
     const file = prioritizedFiles[i];
@@ -808,6 +852,11 @@ export async function runAnalysis(
           }
         }
 
+        // Track file analysis results
+        if (suggestions.length === 0) {
+          filesWithNoIssues++;
+        }
+
         allSuggestions.push(...suggestions);
         inFlight.delete(file);
 
@@ -839,7 +888,14 @@ export async function runAnalysis(
       })
       .catch((error) => {
         completed++;
+        failedFiles++;
         inFlight.delete(file);
+
+        // Track error type for better reporting
+        if (error?.isParsingError) {
+          parsingErrors++;
+        }
+
         // Silently handle file analysis errors - don't break entire analysis
 
         // Update progress even on error
@@ -886,6 +942,25 @@ export async function runAnalysis(
 
   // Save updated cache
   await saveCache(cache, cwd);
+
+  // Log analysis summary
+  const filesAnalyzed = total - failedFiles;
+  const filesWithIssues = filesAnalyzed - filesWithNoIssues;
+  console.log("\n--- Analysis Summary ---");
+  console.log(`Total files: ${total}`);
+  console.log(`Successfully analyzed: ${filesAnalyzed}`);
+  console.log(`Files with suggestions: ${filesWithIssues}`);
+  console.log(`Files with no issues: ${filesWithNoIssues}`);
+  if (failedFiles > 0) {
+    console.log(`Failed files: ${failedFiles}`);
+    if (parsingErrors > 0) {
+      console.log(`  - Parsing errors: ${parsingErrors}`);
+    }
+    if (failedFiles - parsingErrors > 0) {
+      console.log(`  - API/Network errors: ${failedFiles - parsingErrors}`);
+    }
+  }
+  console.log(`Cache hits: ${cacheHits}/${total}`);
 
   // Generate summary
   const categories: Record<string, number> = {};

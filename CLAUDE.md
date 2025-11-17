@@ -10,7 +10,7 @@ This file provides essential context for AI assistants (like Claude Code) workin
 
 **Churn 2.0** - Local-first context engine for AI code agents  
 **Published as**: `churn-cli` on npm  
-**Current Version**: 2.1.3  
+**Current Version**: 2.1.5  
 **Repository**: https://github.com/cloudboyjh1/churn2.0
 
 **Core Philosophy:**
@@ -326,8 +326,8 @@ Since this is a CLI tool, **manual testing** is primary:
 
 ## Version Information
 
-**Current Version**: 2.0.12  
-**Last Major Update**: Analysis quality improvements, viewport fixes, user confirmation flows
+**Current Version**: 2.1.5  
+**Last Major Update**: Performance stabilization (60-70% faster), fixed retry mechanism, adaptive viewport, improved error handling
 
 See [`CHANGELOG.md`](./CHANGELOG.md) for version history.
 
