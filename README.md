@@ -91,7 +91,7 @@ Churn gives you **actionable insights**, not just observations. Every finding in
 - Fixed broken retry mechanism that prevented proper API error recovery
 - Reduced timeout from 120s → 45s for faster failure detection
 - Increased concurrency: Anthropic/OpenAI/Google from 8-10 → 15 concurrent files
-- Multi-strategy JSON extraction reduces parsing failures
+- JSON extraction reduces parsing failures
 - UI components now prioritized in analysis queue
 
 **Critical Bug Fixes (v2.1.5)** 
