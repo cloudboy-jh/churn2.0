@@ -6,7 +6,7 @@
 
 Open-source • Local-first • Use as-is
 
-[![GitHub last commit](https://img.shields.io/github/last-commit/cloudboyjh1/churn2.0?style=flat-square&color=ff5656)](https://github.com/cloudboyjh1/churn2.0/commits/master)
+[![GitHub last commit](https://img.shields.io/github/last-commit/cloudboy-jh/churn?style=flat-square&color=ff5656)](https://github.com/cloudboy-jh/churn/commits/master)
 [![npm version](https://img.shields.io/npm/v/churn-cli.svg?style=flat-square&color=ff5656)](https://www.npmjs.com/package/churn-cli)
 [![npm downloads](https://img.shields.io/npm/dm/churn-cli.svg?style=flat-square&color=ff5656)](https://www.npmjs.com/package/churn-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-ff5656.svg?style=flat-square)](https://opensource.org/licenses/MIT)
