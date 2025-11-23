@@ -1,6 +1,6 @@
 <div align="center">
 
-![Churn](./assets/churnreadme.png)
+![Churn](./assets/churnreadmelogonew.png)
 
 **Your agents favorite context layer.**
 
