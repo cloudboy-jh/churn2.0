@@ -6,7 +6,7 @@
 
 Open-source • Local-first • Use as-is
 
-[![CI](https://github.com/cloudboyjh1/churn2.0/workflows/CI/badge.svg)](https://github.com/cloudboyjh1/churn2.0/actions/workflows/ci.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/cloudboyjh1/churn2.0/ci.yml?branch=master&style=flat-square&color=ff5656&label=build)](https://github.com/cloudboyjh1/churn2.0/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/churn-cli.svg?style=flat-square&color=ff5656)](https://www.npmjs.com/package/churn-cli)
 [![npm downloads](https://img.shields.io/npm/dm/churn-cli.svg?style=flat-square&color=ff5656)](https://www.npmjs.com/package/churn-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-ff5656.svg?style=flat-square)](https://opensource.org/licenses/MIT)
