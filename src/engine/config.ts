@@ -2,9 +2,25 @@ import fs from "fs-extra";
 import path from "path";
 import os from "os";
 
+export type AgentType = "claude" | "cursor" | "gemini" | "codex" | "none";
+export type ContextFormat = "minimal" | "comprehensive";
+
+export interface HandoffConfig {
+  enabled: boolean;
+  targetAgent: AgentType;
+  contextFormat: ContextFormat;
+  autoLaunch: boolean;
+  agentCommands: Record<AgentType, string>;
+}
+
 export interface ChurnConfig {
   version: string;
   apiKeys?: {
+    anthropic?: string;
+    openai?: string;
+    google?: string;
+  };
+  apiKeyTimestamps?: {
     anthropic?: string;
     openai?: string;
     google?: string;
@@ -25,6 +41,7 @@ export interface ChurnConfig {
     verbose?: boolean;
     concurrency?: number;
   };
+  handoff?: HandoffConfig;
 }
 
 export interface ProjectConfig {
@@ -116,6 +133,44 @@ export async function getApiKey(
   );
 }
 
+// Get API key timestamp for a provider
+export async function getApiKeyTimestamp(
+  provider: "anthropic" | "openai" | "google",
+): Promise<string | undefined> {
+  const config = await loadConfig();
+  return config.apiKeyTimestamps?.[provider];
+}
+
+// Format API key age in human-readable format
+export function formatKeyAge(timestamp: string | undefined): string {
+  if (!timestamp) {
+    return "unknown";
+  }
+
+  const now = new Date();
+  const then = new Date(timestamp);
+  const diffMs = now.getTime() - then.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+  if (diffDays > 365) {
+    const years = Math.floor(diffDays / 365);
+    return `${years} year${years > 1 ? "s" : ""} ago`;
+  } else if (diffDays > 30) {
+    const months = Math.floor(diffDays / 30);
+    return `${months} month${months > 1 ? "s" : ""} ago`;
+  } else if (diffDays > 0) {
+    return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+  } else if (diffHours > 0) {
+    return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+  } else if (diffMinutes > 0) {
+    return `${diffMinutes} minute${diffMinutes > 1 ? "s" : ""} ago`;
+  } else {
+    return "just now";
+  }
+}
+
 // Set API key for a provider
 export async function setApiKey(
   provider: "anthropic" | "openai" | "google",
@@ -127,7 +182,12 @@ export async function setApiKey(
     config.apiKeys = {};
   }
 
+  if (!config.apiKeyTimestamps) {
+    config.apiKeyTimestamps = {};
+  }
+
   config.apiKeys[provider] = key;
+  config.apiKeyTimestamps[provider] = new Date().toISOString();
   await saveConfig(config);
 }
 
@@ -248,4 +308,44 @@ export async function setConcurrency(value: number): Promise<void> {
   }
   config.preferences.concurrency = value;
   await saveConfig(config);
+}
+
+// Get default handoff configuration
+function getDefaultHandoffConfig(): HandoffConfig {
+  return {
+    enabled: true,
+    targetAgent: "none",
+    contextFormat: "minimal",
+    autoLaunch: true,
+    agentCommands: {
+      claude: "claude",
+      cursor: "cursor",
+      gemini: "gemini",
+      codex: "codex",
+      none: "",
+    },
+  };
+}
+
+// Get handoff configuration
+export async function getHandoffConfig(): Promise<HandoffConfig> {
+  const config = await loadConfig();
+  return config.handoff || getDefaultHandoffConfig();
+}
+
+// Save handoff configuration
+export async function saveHandoffConfig(
+  handoffConfig: Partial<HandoffConfig>,
+): Promise<void> {
+  const config = await loadConfig();
+  const currentHandoff = config.handoff || getDefaultHandoffConfig();
+  config.handoff = { ...currentHandoff, ...handoffConfig };
+  await saveConfig(config);
+}
+
+// Update specific handoff fields
+export async function updateHandoffConfig(
+  updates: Partial<HandoffConfig>,
+): Promise<void> {
+  await saveHandoffConfig(updates);
 }

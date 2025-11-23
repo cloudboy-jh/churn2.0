@@ -1,10 +1,12 @@
 import React, { useState, useMemo, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import { colors, symbols } from "../theme.js";
+import { Panel } from "./Panel.js";
 
 interface StartMenuProps {
   onRunScan: () => void;
   onChooseModel: () => void;
+  onSettings: () => void;
   onExit: () => void;
 }
 
@@ -17,6 +19,7 @@ interface MenuOption {
 export function StartMenu({
   onRunScan,
   onChooseModel,
+  onSettings,
   onExit,
 }: StartMenuProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -26,9 +29,10 @@ export function StartMenu({
     () => [
       { label: "Run scan", action: onRunScan, icon: ">" },
       { label: "Choose model", action: onChooseModel, icon: "*" },
+      { label: "Settings", action: onSettings, icon: "+" },
       { label: "Exit", action: onExit, icon: "x" },
     ],
-    [onRunScan, onChooseModel, onExit],
+    [onRunScan, onChooseModel, onSettings, onExit],
   );
 
   // Memoize input handler
@@ -55,31 +59,37 @@ export function StartMenu({
   useInput(handleInput);
 
   return (
-    <Box flexDirection="column" paddingY={1}>
-      <Box marginBottom={1}>
-        <Text color={colors.text}>What would you like to do?</Text>
-      </Box>
+    <Panel title="What would you like to do?" borderColor={colors.primary}>
+      <Box flexDirection="column">
+        {options.map((option) => (
+          <Box key={option.label} marginBottom={1}>
+            <Text
+              color={
+                selectedIndex === options.indexOf(option)
+                  ? colors.primary
+                  : colors.gray
+              }
+            >
+              {selectedIndex === options.indexOf(option)
+                ? symbols.pointer
+                : " "}{" "}
+              {option.icon} {option.label}
+            </Text>
+          </Box>
+        ))}
 
-      {options.map((option) => (
-        <Box key={option.label} marginBottom={1}>
-          <Text
-            color={
-              selectedIndex === options.indexOf(option)
-                ? colors.primary
-                : colors.gray
-            }
-          >
-            {selectedIndex === options.indexOf(option) ? symbols.pointer : " "}{" "}
-            {option.icon} {option.label}
+        <Box
+          marginTop={1}
+          paddingTop={1}
+          borderStyle="single"
+          borderTop
+          borderColor={colors.gray}
+        >
+          <Text color={colors.gray}>
+            ↑↓: Navigate | Enter: Select | q: Quit
           </Text>
         </Box>
-      ))}
-
-      <Box marginTop={1}>
-        <Text color={colors.gray}>
-          Use arrow keys to navigate, Enter to select, q to quit
-        </Text>
       </Box>
-    </Box>
+    </Panel>
   );
 }

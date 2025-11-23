@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { render, Text, Box, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { Command } from "commander";
+import path from "path";
 import { Logo } from "./components/Logo.js";
 import { ModelSelect } from "./components/ModelSelect.js";
 import { RunConsole } from "./components/RunConsole.js";
@@ -12,11 +13,13 @@ import { AskConsole } from "./components/AskConsole.js";
 import { CommandsList } from "./components/CommandsList.js";
 import { ConfirmRun } from "./components/ConfirmRun.js";
 import { StartMenu } from "./components/StartMenu.js";
+import { HandoffSettings } from "./components/HandoffSettings.js";
 import { getRepoInfo, detectProjectType, isGitRepo } from "./engine/git.js";
 import {
   ensureProjectDir,
   isSetupComplete,
   getDefaultModel,
+  type AgentType,
 } from "./engine/config.js";
 import { ModelConfig } from "./engine/models.js";
 import {
@@ -34,6 +37,7 @@ type AppPhase =
   | "run"
   | "review"
   | "export"
+  | "handoff-settings"
   | "ask"
   | "ask-input"
   | "complete";
@@ -72,6 +76,10 @@ function App({
   );
   const [currentModelDisplay, setCurrentModelDisplay] =
     useState<string>("No model selected");
+  const [exportedFiles, setExportedFiles] = useState<string[]>([]);
+  const [pendingHandoffAgent, setPendingHandoffAgent] =
+    useState<AgentType | null>(null);
+  const [previousPhase, setPreviousPhase] = useState<AppPhase | null>(null);
 
   useEffect(() => {
     initialize();
@@ -106,6 +114,13 @@ function App({
   });
 
   function handleGoBack() {
+    // For handoff-settings, use tracked previous phase
+    if (phase === "handoff-settings" && previousPhase) {
+      setPhase(previousPhase);
+      setPreviousPhase(null);
+      return;
+    }
+
     // Define phase navigation - go back to previous phase
     const phaseFlow: Record<AppPhase, AppPhase | null> = {
       init: null,
@@ -115,14 +130,15 @@ function App({
       run: "confirm",
       review: "run",
       export: "review",
+      "handoff-settings": "start", // Default fallback
       ask: "start",
       "ask-input": "start",
       complete: null,
     };
 
-    const previousPhase = phaseFlow[phase];
-    if (previousPhase) {
-      setPhase(previousPhase);
+    const prevPhase = phaseFlow[phase];
+    if (prevPhase) {
+      setPhase(prevPhase);
     } else {
       // If no previous phase, exit
       process.exit(0);
@@ -264,6 +280,62 @@ function App({
     setPhase("complete");
   }
 
+  async function handleHandoff(agentType: AgentType, files: string[]) {
+    // Import handoff engine
+    const { createHandoffPackage, executeHandoff, isAgentAvailable } =
+      await import("./engine/handoff.js");
+    const { loadLastReport } = await import("./engine/reports.js");
+    const { getHandoffConfig } = await import("./engine/config.js");
+
+    // Load report and config
+    const report = await loadLastReport();
+    const handoffConfig = await getHandoffConfig();
+
+    if (!report) {
+      console.error("No report found for handoff");
+      setPhase("complete");
+      return;
+    }
+
+    // Check if agent is available
+    const available = await isAgentAvailable(agentType);
+    if (!available) {
+      console.error(
+        `\nWARNING: ${agentType} not found in PATH. Please install the ${agentType} CLI.`,
+      );
+      setPhase("complete");
+      return;
+    }
+
+    // Create handoff package
+    const handoffPackage = await createHandoffPackage(
+      report,
+      acceptedSuggestions,
+      handoffConfig.contextFormat,
+    );
+
+    // Execute handoff - this will transfer control to the agent
+    try {
+      await executeHandoff(agentType, handoffPackage);
+      // If agent exits, we continue to complete
+      setPhase("complete");
+    } catch (error) {
+      console.error(`Failed to launch ${agentType}:`, error);
+      setPhase("complete");
+    }
+  }
+
+  function handleConfigureHandoff() {
+    setPreviousPhase(phase);
+    setPhase("handoff-settings");
+  }
+
+  function handleHandoffSettingsComplete() {
+    // Return to where we came from (export or start)
+    setPhase(previousPhase || "start");
+    setPreviousPhase(null);
+  }
+
   // Get subtitle based on phase
   const getSubtitle = () => {
     switch (phase) {
@@ -282,128 +354,147 @@ function App({
   };
 
   return (
-    <Box flexDirection="column">
-      {/* Single logo at App level */}
-      <Logo subtitle={getSubtitle()} message={repoSummary} />
+    <Box flexDirection="column" alignItems="center" paddingX={2} paddingY={1}>
+      <Box flexDirection="column" width="80%">
+        {/* Single logo at App level */}
+        <Logo subtitle={getSubtitle()} message={repoSummary} />
 
-      {/* Phase-specific content */}
-      {phase === "start" && (
-        <StartMenu
-          onRunScan={async () => {
-            // Set default context for full scan if not already set
-            if (!context) {
-              setContext({ mode: "full" });
-            }
-
-            // Check if model is configured and load it
-            const complete = await isSetupComplete();
-            if (complete) {
-              const defaultModel = await getDefaultModel();
-              if (defaultModel) {
-                setModelConfig({
-                  provider: defaultModel.provider,
-                  model: defaultModel.model,
-                });
-                // Skip directly to run phase (ConfirmRun component shows confirmation)
-                setPhase("confirm");
-                return;
+        {/* Phase-specific content */}
+        {phase === "start" && (
+          <StartMenu
+            onRunScan={async () => {
+              // Set default context for full scan if not already set
+              if (!context) {
+                setContext({ mode: "full" });
               }
-            }
 
-            // No model configured, go to model setup
-            setPhase("model");
-          }}
-          onChooseModel={() => setPhase("model")}
-          onExit={() => setPhase("complete")}
-        />
-      )}
-
-      {phase === "model" && (
-        <>
-          {/* Show commands list on first run */}
-          {showCommandsList && <CommandsList />}
-          <ModelSelect onComplete={handleModelComplete} />
-        </>
-      )}
-
-      {phase === "confirm" && modelConfig && context && (
-        <ConfirmRun
-          modelConfig={modelConfig}
-          context={context}
-          repoSummary={repoSummary}
-          fileCount={fileCount}
-          onConfirm={() => setPhase("run")}
-          onCancel={() => setPhase("complete")}
-        />
-      )}
-
-      {phase === "ask-input" && (
-        <Box flexDirection="column" paddingY={1}>
-          <Box marginBottom={1}>
-            <Text color="#f2e9e4">Enter your question:</Text>
-          </Box>
-          <Box>
-            <Text color="#ff6f54">{symbols.pointer} </Text>
-            <TextInput
-              value={question}
-              onChange={setQuestion}
-              onSubmit={() => {
-                if (question.trim()) {
-                  setPhase("ask");
+              // Check if model is configured and load it
+              const complete = await isSetupComplete();
+              if (complete) {
+                const defaultModel = await getDefaultModel();
+                if (defaultModel) {
+                  setModelConfig({
+                    provider: defaultModel.provider,
+                    model: defaultModel.model,
+                  });
+                  // Skip directly to run phase (ConfirmRun component shows confirmation)
+                  setPhase("confirm");
+                  return;
                 }
-              }}
-              placeholder="e.g., How does authentication work?"
-            />
+              }
+
+              // No model configured, go to model setup
+              setPhase("model");
+            }}
+            onChooseModel={() => setPhase("model")}
+            onSettings={() => {
+              setPreviousPhase("start");
+              setPhase("handoff-settings");
+            }}
+            onExit={() => setPhase("complete")}
+          />
+        )}
+
+        {phase === "model" && (
+          <>
+            {/* Show commands list on first run */}
+            {showCommandsList && <CommandsList />}
+            <ModelSelect onComplete={handleModelComplete} />
+          </>
+        )}
+
+        {phase === "confirm" && modelConfig && context && (
+          <ConfirmRun
+            modelConfig={modelConfig}
+            context={context}
+            repoSummary={repoSummary}
+            fileCount={fileCount}
+            onConfirm={() => setPhase("run")}
+            onCancel={() => setPhase("complete")}
+          />
+        )}
+
+        {phase === "ask-input" && (
+          <Box flexDirection="column" paddingY={1}>
+            <Box marginBottom={1}>
+              <Text color="#f2e9e4">Enter your question:</Text>
+            </Box>
+            <Box>
+              <Text color="#ff6f54">{symbols.pointer} </Text>
+              <TextInput
+                value={question}
+                onChange={setQuestion}
+                onSubmit={() => {
+                  if (question.trim()) {
+                    setPhase("ask");
+                  }
+                }}
+                placeholder="e.g., How does authentication work?"
+              />
+            </Box>
           </Box>
-        </Box>
-      )}
+        )}
 
-      {phase === "ask" && modelConfig && question && (
-        <AskConsole
-          question={question}
-          modelConfig={modelConfig}
-          onComplete={() => setPhase("complete")}
-        />
-      )}
+        {phase === "ask" && modelConfig && question && (
+          <AskConsole
+            question={question}
+            modelConfig={modelConfig}
+            onComplete={() => setPhase("complete")}
+          />
+        )}
 
-      {phase === "run" && modelConfig && context && (
-        <RunConsole
-          modelConfig={modelConfig}
-          context={context}
-          onComplete={handleRunComplete}
-          concurrency={concurrencyLimit}
-        />
-      )}
+        {phase === "run" && modelConfig && context && (
+          <RunConsole
+            modelConfig={modelConfig}
+            context={context}
+            onComplete={handleRunComplete}
+            concurrency={concurrencyLimit}
+          />
+        )}
 
-      {phase === "review" && analysisResult && (
-        <ReviewPanel
-          result={analysisResult}
-          onComplete={handleReviewComplete}
-        />
-      )}
+        {phase === "review" && analysisResult && (
+          <ReviewPanel
+            result={analysisResult}
+            onComplete={handleReviewComplete}
+          />
+        )}
 
-      {phase === "export" && (
-        <ExportPanel
-          suggestions={acceptedSuggestions}
-          onComplete={handleExportComplete}
-        />
-      )}
+        {phase === "export" && (
+          <ExportPanel
+            suggestions={acceptedSuggestions}
+            onComplete={handleExportComplete}
+            onHandoff={handleHandoff}
+            onConfigureHandoff={handleConfigureHandoff}
+          />
+        )}
 
-      {phase === "complete" && (
-        <Box marginTop={1}>
-          <Text color="#a6e3a1">{symbols.tick} Complete</Text>
-        </Box>
-      )}
+        {phase === "handoff-settings" && (
+          <HandoffSettings
+            onComplete={handleHandoffSettingsComplete}
+            onCancel={() => {
+              // Cancel returns to where we came from
+              setPhase(previousPhase || "start");
+              setPreviousPhase(null);
+            }}
+          />
+        )}
 
-      {/* Keyboard shortcuts footer (show on most phases) */}
-      {phase !== "complete" && phase !== "init" && (
-        <Box marginTop={1}>
-          <Text color="#a6adc8" dimColor>
-            {phase !== "start" && "esc (back) · "}
-            {phase !== "start" && "o (start over) · "}z (exit)
-          </Text>
-        </Box>
-      )}
+        {phase === "complete" && (
+          <Box marginTop={1}>
+            <Text color="#a6e3a1">{symbols.tick} Complete</Text>
+          </Box>
+        )}
+
+        {/* Keyboard shortcuts footer (show on most phases) */}
+        {phase !== "complete" && phase !== "init" && (
+          <Box marginTop={1}>
+            <Text color="#a6adc8" dimColor>
+              {phase !== "start" && "esc (back) · "}
+              {phase !== "start" && "o (start over) · "}z (exit)
+            </Text>
+          </Box>
+        )}
+      </Box>
     </Box>
   );
 }
@@ -520,10 +611,22 @@ program
 
 program
   .command("pass")
-  .description("Pass report to another LLM")
-  .requiredOption("--to <llm>", 'Target LLM (e.g., "claude", "gpt4")')
+  .description("Pass report to another AI coding agent")
+  .requiredOption(
+    "--to <agent>",
+    'Target agent: "claude", "cursor", "gemini", "codex"',
+  )
+  .option(
+    "--format <format>",
+    'Context format: "minimal" (MD+JSON) or "comprehensive" (MD+JSON+patch+metadata)',
+    "minimal",
+  )
+  .option("--launch", "Launch the agent immediately (default: output only)")
   .action(async (options) => {
     const { loadLastReport } = await import("./engine/reports.js");
+    const { createHandoffPackage, executeHandoff, isAgentAvailable } =
+      await import("./engine/handoff.js");
+
     const report = await loadLastReport();
 
     if (!report) {
@@ -531,9 +634,69 @@ program
       process.exit(1);
     }
 
-    console.log(`Passing report to ${options.to}...`);
-    console.log(JSON.stringify(report, null, 2));
-    process.exit(0);
+    const agent = options.to as
+      | "claude"
+      | "cursor"
+      | "gemini"
+      | "codex"
+      | "none";
+    const format = options.format as "minimal" | "comprehensive";
+
+    // Validate agent
+    const validAgents = ["claude", "cursor", "gemini", "codex"];
+    if (!validAgents.includes(agent)) {
+      console.error(
+        `Invalid agent: ${agent}. Must be one of: ${validAgents.join(", ")}`,
+      );
+      process.exit(1);
+    }
+
+    // Create handoff package
+    console.log(`\nCreating handoff package for ${agent}...`);
+    const handoffPackage = await createHandoffPackage(
+      report,
+      report.analysis.suggestions,
+      format,
+    );
+
+    console.log(`Package created with ${handoffPackage.files.length} files`);
+    console.log(`  Format: ${format}`);
+    console.log(`  Files:`);
+    handoffPackage.files.forEach((file) => {
+      console.log(`    - ${path.relative(process.cwd(), file)}`);
+    });
+
+    // If --launch flag is set, execute handoff
+    if (options.launch) {
+      console.log(`\nLaunching ${agent}...`);
+
+      // Check if agent is available
+      const available = await isAgentAvailable(agent);
+      if (!available) {
+        console.error(
+          `\nWARNING: ${agent} not found in PATH. Please install or configure the ${agent} CLI.`,
+        );
+        process.exit(1);
+      }
+
+      // Execute handoff
+      try {
+        await executeHandoff(agent, handoffPackage);
+        // Agent takes over - if we reach here, agent has exited
+        process.exit(0);
+      } catch (error) {
+        console.error(`\nERROR: Failed to launch ${agent}:`, error);
+        process.exit(1);
+      }
+    } else {
+      // Just output the package info
+      console.log(`\nHandoff Package:`);
+      console.log(JSON.stringify(handoffPackage, null, 2));
+      console.log(
+        `\nTip: Add --launch to automatically start ${agent} with these files`,
+      );
+      process.exit(0);
+    }
   });
 
 // Default command

@@ -27,9 +27,10 @@ Open-source • Local-first • Use as-is
 - [Installation](#installation)
 - [Running Locally with Ollama](#running-locally-with-ollama)
 - [Commands](#commands)
+- [Keyboard Shortcuts](#keyboard-shortcuts)
 - [Configuration](#configuration)
-- [Contributing](#contributing)
 - [Documentation](#documentation)
+- [Contributing](#contributing)
 - [License](#license)
 
 ---
@@ -82,22 +83,25 @@ Churn gives you **actionable insights**, not just observations. Every finding in
 
 ---
 
-## What's New in v2.1.5
+## What's New in v2.1.6
 
-**Performance Stabilization & Error Handling** - Version 2.1.5 delivers major speed improvements and fixes critical bugs:
+**Agent Handoff System** - Version 2.1.6 introduces seamless integration with AI coding agents:
 
-**Performance Improvements (v2.1.5)** 
+**New in v2.1.6**
+- **Interactive Handoff** - After export, prompt to launch your configured agent immediately
+- **Agent Support** - Claude Code, Cursor, Gemini CLI, and Codex integration
+- **Context Formats** - Minimal (MD+JSON) or Comprehensive (MD+JSON+patch+metadata)
+- **Enhanced `churn pass`** - New `--launch` flag to start agents directly
+- **Settings UI** - Press 'C' during handoff prompt to configure preferences
+- **Workflow Integration** - Analyze with Churn → Hand off to agent → Implement changes
+
+**Previous Performance Improvements (v2.1.5)** 
 - **60-70% faster analysis** - 117 files: 8 minutes → 2-3 minutes
 - Fixed broken retry mechanism that prevented proper API error recovery
 - Reduced timeout from 120s → 45s for faster failure detection
 - Increased concurrency: Anthropic/OpenAI/Google from 8-10 → 15 concurrent files
 - JSON extraction reduces parsing failures
 - UI components now prioritized in analysis queue
-
-**Critical Bug Fixes (v2.1.5)** 
-- Fixed retry mechanism - API errors now properly trigger retries (was dead code)
-- Eliminated double-retry bug (SDK + app level)
-- Parsing errors no longer cached permanently
 - Fixed ReviewPanel input handler instability (missed in v2.1.4)
 - Adaptive viewport sizing based on terminal height (10-25 items vs hardcoded 10)
 
@@ -179,6 +183,7 @@ That's it. Churn will:
 - **Zero-Setup** - Run from any Git repository, no cloning or configuration required
 - **Local-First** - All data stored on your machine under `~/.churn/` and `.churn/`
 - **Multi-Model Support** - Claude, GPT, Gemini, or local Ollama models
+- **Agent Handoff** - Pass analysis results directly to Claude Code, Cursor, Gemini CLI, or Codex for implementation
 - **Adaptive Analysis** - Language and framework-aware prompts for context-specific findings
 - **Differential Mode** - Analyze only changed lines in staged files (70-90% cost savings)
 - **Live Analysis** - Real-time streaming output with progress tracking
@@ -270,7 +275,7 @@ churn start
 
 ### `churn start`
 
-Launch interactive menu with options to run analysis, choose model, or exit.
+Launch interactive menu with options to run analysis, choose model, configure settings, or exit.
 
 ```bash
 churn start
@@ -279,6 +284,7 @@ churn start
 **Menu Options:**
 - **Run scan** - Start code analysis with current model
 - **Choose model** - Select or switch AI provider/model
+- **Settings** - Configure handoff preferences (agent, context format, auto-launch)
 - **Exit** - Quit the application
 
 ### `churn run`
@@ -359,14 +365,29 @@ churn export
 
 ### `churn pass`
 
-Pass the analysis report to another LLM or tool.
+Hand off analysis results to AI coding agents (Claude Code, Cursor, Gemini CLI, Codex).
 
+**Options:**
+- `--to <agent>` - Target agent: `claude`, `cursor`, `gemini`, or `codex` (required)
+- `--format <format>` - Context format: `minimal` (MD+JSON) or `comprehensive` (MD+JSON+patch+metadata) (default: minimal)
+- `--launch` - Launch the agent immediately with the handoff package
+
+**Examples:**
 ```bash
+# Create handoff package and display info
 churn pass --to claude
-churn pass --to json | jq '.analysis.findings'
+
+# Create comprehensive package with all context
+churn pass --to cursor --format comprehensive
+
+# Launch agent immediately with handoff package
+churn pass --to claude --launch
+
+# View handoff package as JSON
+churn pass --to gemini | jq '.files'
 ```
 
-Outputs the full `churn-reports.json` to stdout for piping.
+The `pass` command generates a handoff package containing the analysis results and optionally launches the target agent with the files. This enables seamless workflows where Churn analyzes your code and then hands control to your preferred AI coding assistant for implementation.
 
 ---
 
@@ -400,7 +421,7 @@ Churn includes global keyboard shortcuts that work on every screen (added in v2.
 
 ```json
 {
-  "version": "2.1.3",
+  "version": "2.1.5",
   "apiKeys": {
     "anthropic": "sk-ant-...",
     "openai": "sk-...",
@@ -409,9 +430,30 @@ Churn includes global keyboard shortcuts that work on every screen (added in v2.
   "defaultModel": {
     "provider": "anthropic",
     "model": "claude-sonnet-4-5"
+  },
+  "handoff": {
+    "enabled": true,
+    "targetAgent": "claude",
+    "contextFormat": "minimal",
+    "autoLaunch": true,
+    "agentCommands": {
+      "claude": "claude",
+      "cursor": "cursor",
+      "gemini": "gemini",
+      "codex": "codex"
+    }
   }
 }
 ```
+
+**Handoff Configuration:**
+- `enabled` - Enable/disable handoff feature
+- `targetAgent` - Default agent for handoff (`claude`, `cursor`, `gemini`, `codex`, or `none`)
+- `contextFormat` - Context to pass: `minimal` (MD+JSON) or `comprehensive` (MD+JSON+patch+metadata)
+- `autoLaunch` - Show interactive prompt after export to launch agent
+- `agentCommands` - Custom CLI commands for each agent
+
+Configure handoff settings interactively by pressing 'C' when prompted after export, or edit the config file directly.
 
 **Note:** Ollama models don't require API keys and run completely locally.
 
@@ -425,6 +467,21 @@ Churn requires API keys for cloud models:
 - **Ollama**: Run locally, no key needed
 
 Keys are stored in `~/.churn/config.json` and never sent anywhere except the respective API providers.
+
+---
+
+## Documentation
+
+### Guides
+- [Agent Handoff Guide](./docs/guides/AGENT_HANDOFF.md) - Complete guide to integrating with AI coding agents
+- [Quickstart Guide](./docs/guides/QUICKSTART.md) - Get started in 5 minutes
+- [Examples](./docs/guides/EXAMPLES.md) - Real-world usage examples
+- [Install Bun](./docs/guides/INSTALL_BUN.md) - Bun installation guide
+
+### Development
+- [Development Guide](./docs/development/CLAUDE.md) - Comprehensive developer documentation
+- [Implementation Summary](./docs/development/IMPLEMENTATION_SUMMARY.md) - Architecture overview
+- [File Manifest](./docs/development/FILE_MANIFEST.md) - Complete file listing
 
 ---
 

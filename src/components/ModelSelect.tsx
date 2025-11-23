@@ -17,6 +17,8 @@ import {
   setApiKey,
   getLastModelForProvider,
   setLastModelForProvider,
+  getApiKeyTimestamp,
+  formatKeyAge,
 } from "../engine/config.js";
 
 interface ModelSelectProps {
@@ -32,6 +34,9 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [apiKey, setApiKeyInput] = useState("");
   const [existingKey, setExistingKey] = useState<string | null>(null);
+  const [keyTimestamp, setKeyTimestamp] = useState<string | undefined>(
+    undefined,
+  );
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [loadingOllama, setLoadingOllama] = useState(false);
 
@@ -76,6 +81,7 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
         selectedProvider !== "ollama"
       ) {
         setExistingKey(null);
+        setKeyTimestamp(undefined);
         setApiKeyInput("");
         setPhase("apiKey");
       }
@@ -112,7 +118,9 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
         // Check for existing API key (except Ollama)
         if (item.value !== "ollama") {
           const key = await getApiKey(item.value);
+          const timestamp = await getApiKeyTimestamp(item.value);
           setExistingKey(key || null);
+          setKeyTimestamp(timestamp);
         } else {
           // For Ollama, fetch installed models
           setLoadingOllama(true);
@@ -265,6 +273,9 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
             <Text color="#a6e3a1">
               {symbols.tick} Using saved API key (last 4 chars: ...
               {existingKey.slice(-4)})
+            </Text>
+            <Text color="#a6adc8" dimColor>
+              Last updated: {formatKeyAge(keyTimestamp)}
             </Text>
             <Text color="#a6adc8" dimColor>
               Press 'r' to replace API key

@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.7] - 2025-01-23
+
+### Added
+- **API Key Age Tracking:** Model selection now shows when API keys were last updated
+  - Displays human-readable age: "just now", "5 minutes ago", "3 days ago", "2 months ago"
+  - Timestamps automatically saved when API keys are set or replaced
+  - Helps users track key freshness and know when keys may need rotation
+  - Shows as "Last updated: {age}" below saved API key information
+  - Legacy keys without timestamps show "unknown" until updated
+
+### Changed
+- `ChurnConfig` interface extended with `apiKeyTimestamps` field to track update times
+- `setApiKey()` now automatically records timestamp when keys are saved
+- ModelSelect UI enhanced to display key age information
+
+### Technical
+- Added `getApiKeyTimestamp()` helper function in config.ts
+- Added `formatKeyAge()` utility for human-readable time formatting
+- Timestamps stored in ISO 8601 format for consistency
+- Graceful handling of legacy configurations without timestamps
+
+## [2.1.6] - 2025-01-23
+
+### Added
+- **Agent Handoff System:** Seamless integration with AI coding agents
+  - Interactive handoff prompt after export: "Launch agent now? (Y/N/C)"
+  - Support for Claude Code, Cursor, Gemini CLI, and Codex
+  - Configurable context formats: minimal (MD+JSON) or comprehensive (MD+JSON+patch+metadata)
+  - New `HandoffSettings` component for configuring handoff preferences
+  - Agent availability checking before launch
+  - Automatic handoff package creation with timestamp-based files
+- **Enhanced `churn pass` command:**
+  - `--to <agent>` flag to specify target agent (claude, cursor, gemini, codex)
+  - `--format <format>` flag for minimal or comprehensive context
+  - `--launch` flag to immediately start the agent with handoff package
+  - Validates agent availability in system PATH
+  - Displays package contents before handoff
+- **Configuration:**
+  - New `handoff` section in `~/.churn/config.json`
+  - Configurable target agent, context format, and auto-launch behavior
+  - Custom agent CLI commands support
+  - Interactive settings UI accessible via 'C' key during handoff prompt
+
+### Changed
+- ExportPanel now supports handoff callbacks (`onHandoff`, `onConfigureHandoff`)
+- Added new phase `handoff-settings` to App state machine
+- Removed emojis from handoff-related output (aligns with CLI conventions)
+
+### Technical
+- New file: `src/engine/handoff.ts` - Core handoff engine with agent adapters
+- New file: `src/components/HandoffSettings.tsx` - Interactive settings UI
+- Extended `ChurnConfig` interface with `HandoffConfig` type
+- Agent adapters for building CLI commands per agent
+- Context packaging functions in `reports.ts`
+- Type-safe agent selection with `AgentType` union type
+
 ## [2.1.5] - 2025-01-17
 
 ### Fixed

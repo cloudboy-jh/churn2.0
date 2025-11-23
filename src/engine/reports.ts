@@ -1,7 +1,7 @@
-import fs from 'fs-extra';
-import path from 'path';
-import { AnalysisResult, FileSuggestion } from './analysis.js';
-import { getRepoInfo } from './git.js';
+import fs from "fs-extra";
+import path from "path";
+import { AnalysisResult, FileSuggestion } from "./analysis.js";
+import { getRepoInfo } from "./git.js";
 
 export interface ChurnReport {
   version: string;
@@ -18,15 +18,15 @@ export interface ChurnReport {
 // Generate churn-reports.json
 export async function generateReport(
   analysis: AnalysisResult,
-  cwd: string = process.cwd()
+  cwd: string = process.cwd(),
 ): Promise<ChurnReport> {
   const repoInfo = await getRepoInfo(cwd);
 
   const report: ChurnReport = {
-    version: '2.0.0',
+    version: "2.0.0",
     repository: {
       name: repoInfo?.name || path.basename(cwd),
-      branch: repoInfo?.branch || 'unknown',
+      branch: repoInfo?.branch || "unknown",
       path: cwd,
       remote: repoInfo?.remote,
     },
@@ -40,20 +40,22 @@ export async function generateReport(
 // Save report to .churn/reports/churn-reports.json
 export async function saveReport(
   report: ChurnReport,
-  cwd: string = process.cwd()
+  cwd: string = process.cwd(),
 ): Promise<string> {
-  const reportsDir = path.join(cwd, '.churn', 'reports');
+  const reportsDir = path.join(cwd, ".churn", "reports");
   await fs.ensureDir(reportsDir);
 
-  const reportPath = path.join(reportsDir, 'churn-reports.json');
+  const reportPath = path.join(reportsDir, "churn-reports.json");
   await fs.writeJSON(reportPath, report, { spaces: 2 });
 
   return reportPath;
 }
 
 // Load the last report
-export async function loadLastReport(cwd: string = process.cwd()): Promise<ChurnReport | null> {
-  const reportPath = path.join(cwd, '.churn', 'reports', 'churn-reports.json');
+export async function loadLastReport(
+  cwd: string = process.cwd(),
+): Promise<ChurnReport | null> {
+  const reportPath = path.join(cwd, ".churn", "reports", "churn-reports.json");
 
   if (await fs.pathExists(reportPath)) {
     return await fs.readJSON(reportPath);
@@ -65,20 +67,20 @@ export async function loadLastReport(cwd: string = process.cwd()): Promise<Churn
 // Export suggestions to a specific file
 export async function exportSuggestions(
   suggestions: FileSuggestion[],
-  format: 'json' | 'markdown',
-  outputPath: string
+  format: "json" | "markdown",
+  outputPath: string,
 ): Promise<void> {
-  if (format === 'json') {
+  if (format === "json") {
     await fs.writeJSON(outputPath, suggestions, { spaces: 2 });
   } else {
     const markdown = generateMarkdownReport(suggestions);
-    await fs.writeFile(outputPath, markdown, 'utf-8');
+    await fs.writeFile(outputPath, markdown, "utf-8");
   }
 }
 
 // Generate markdown report
 function generateMarkdownReport(suggestions: FileSuggestion[]): string {
-  let md = '# Churn Analysis Report\n\n';
+  let md = "# Churn Analysis Report\n\n";
   md += `Generated: ${new Date().toISOString()}\n\n`;
   md += `Total Suggestions: ${suggestions.length}\n\n`;
 
@@ -101,13 +103,13 @@ function generateMarkdownReport(suggestions: FileSuggestion[]): string {
       md += `**Suggestion**: ${suggestion.suggestion}\n\n`;
 
       if (suggestion.code) {
-        md += '**Before**:\n';
-        md += '```\n' + suggestion.code.before + '\n```\n\n';
-        md += '**After**:\n';
-        md += '```\n' + suggestion.code.after + '\n```\n\n';
+        md += "**Before**:\n";
+        md += "```\n" + suggestion.code.before + "\n```\n\n";
+        md += "**After**:\n";
+        md += "```\n" + suggestion.code.after + "\n```\n\n";
       }
 
-      md += '---\n\n';
+      md += "---\n\n";
     }
   }
 
@@ -118,9 +120,9 @@ function generateMarkdownReport(suggestions: FileSuggestion[]): string {
 export async function generatePatch(
   suggestions: FileSuggestion[],
   outputPath: string,
-  cwd: string = process.cwd()
+  cwd: string = process.cwd(),
 ): Promise<void> {
-  let patch = '';
+  let patch = "";
 
   // Group by file
   const byFile = new Map<string, FileSuggestion[]>();
@@ -136,8 +138,8 @@ export async function generatePatch(
     const fullPath = path.join(cwd, file);
 
     try {
-      const content = await fs.readFile(fullPath, 'utf-8');
-      const lines = content.split('\n');
+      const content = await fs.readFile(fullPath, "utf-8");
+      const lines = content.split("\n");
 
       patch += `diff --git a/${file} b/${file}\n`;
       patch += `--- a/${file}\n`;
@@ -161,7 +163,7 @@ export async function generatePatch(
           }
 
           // Show addition
-          const afterLines = suggestion.code.after.split('\n');
+          const afterLines = suggestion.code.after.split("\n");
           for (const line of afterLines) {
             patch += `+${line}\n`;
           }
@@ -177,18 +179,18 @@ export async function generatePatch(
     }
   }
 
-  await fs.writeFile(outputPath, patch, 'utf-8');
+  await fs.writeFile(outputPath, patch, "utf-8");
 }
 
 // Format report summary for display
 export function formatSummary(analysis: AnalysisResult): string {
   const { summary } = analysis;
 
-  let output = '';
+  let output = "";
   output += `Files Analyzed: ${summary.filesAnalyzed}\n`;
   output += `Suggestions: ${summary.suggestions}\n`;
   output += `Duration: ${(summary.duration / 1000).toFixed(2)}s\n`;
-  output += '\nCategories:\n';
+  output += "\nCategories:\n";
 
   for (const [category, count] of Object.entries(summary.categories)) {
     output += `  ${category}: ${count}\n`;
@@ -217,5 +219,45 @@ export function getReportStats(report: ChurnReport) {
     categories: analysis.summary.categories,
     severities: severityCounts,
     duration: analysis.summary.duration,
+  };
+}
+
+// Get most recent exported files from patches directory
+export async function getMostRecentExport(
+  cwd: string = process.cwd(),
+): Promise<{ md: string; json: string; patch?: string } | null> {
+  const patchesDir = path.join(cwd, ".churn", "patches");
+
+  if (!(await fs.pathExists(patchesDir))) {
+    return null;
+  }
+
+  const files = await fs.readdir(patchesDir);
+
+  // Find most recent files by timestamp
+  const mdFiles = files.filter(
+    (f) => f.startsWith("report-") && f.endsWith(".md"),
+  );
+  const jsonFiles = files.filter(
+    (f) => f.startsWith("suggestions-") && f.endsWith(".json"),
+  );
+  const patchFiles = files.filter(
+    (f) => f.startsWith("changes-") && f.endsWith(".patch"),
+  );
+
+  if (mdFiles.length === 0 || jsonFiles.length === 0) {
+    return null;
+  }
+
+  // Get most recent of each type
+  const latestMd = mdFiles.sort().reverse()[0];
+  const latestJson = jsonFiles.sort().reverse()[0];
+  const latestPatch =
+    patchFiles.length > 0 ? patchFiles.sort().reverse()[0] : undefined;
+
+  return {
+    md: path.join(patchesDir, latestMd),
+    json: path.join(patchesDir, latestJson),
+    patch: latestPatch ? path.join(patchesDir, latestPatch) : undefined,
   };
 }
