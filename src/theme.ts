@@ -125,6 +125,50 @@ export function createProgressBar(percent: number, width: number = 40): string {
   );
 }
 
+// Bouncing gradient animation characters (fade: white → light → medium → solid → medium → light → white)
+const bounceGradient = [" ", "░", "▒", "▓", "█", "█", "▓", "▒", "░", " "];
+
+// Create a bouncing gradient progress indicator
+// Returns a string with a bouncing gradient block that moves left-to-right and back
+export function createBouncingProgress(
+  frame: number,
+  width: number = 40,
+  speed: number = 2,
+): string {
+  const gradientWidth = bounceGradient.length;
+  const travelWidth = width - gradientWidth;
+
+  // Calculate position using sine wave for smooth bounce (0 to travelWidth)
+  const cycle = (frame * speed) % (travelWidth * 2);
+  const position = cycle < travelWidth ? cycle : travelWidth * 2 - cycle;
+
+  // Build the bar
+  let bar = "";
+
+  // Leading space
+  bar += " ".repeat(Math.floor(position));
+
+  // Gradient block with colors
+  for (let i = 0; i < bounceGradient.length; i++) {
+    const char = bounceGradient[i];
+    if (char === "█" || char === "▓") {
+      bar += theme.primary(char);
+    } else if (char === "▒" || char === "░") {
+      bar += theme.secondary(char);
+    } else {
+      bar += char;
+    }
+  }
+
+  // Trailing space
+  const remaining = width - Math.floor(position) - gradientWidth;
+  if (remaining > 0) {
+    bar += " ".repeat(remaining);
+  }
+
+  return bar;
+}
+
 // Format file size
 export function formatSize(bytes: number): string {
   const units = ["B", "KB", "MB", "GB"];

@@ -5,7 +5,12 @@ import path from "path";
 import { theme, symbols, colors } from "../theme.js";
 import { Panel } from "./Panel.js";
 import { FileSuggestion } from "../engine/analysis.js";
-import { exportSuggestions, generatePatch } from "../engine/reports.js";
+import {
+  exportSuggestions,
+  generatePatch,
+  loadLastReport,
+  ReportInsights,
+} from "../engine/reports.js";
 import { getHandoffConfig, type AgentType } from "../engine/config.js";
 
 interface ExportPanelProps {
@@ -59,14 +64,18 @@ export function ExportPanel({
 
     const files: string[] = [];
 
+    // Load insights from the last report
+    const lastReport = await loadLastReport(cwd);
+    const insights: ReportInsights | undefined = lastReport?.insights;
+
     // Export as JSON
     const jsonPath = path.join(patchesDir, `suggestions-${timestamp}.json`);
-    await exportSuggestions(suggestions, "json", jsonPath);
+    await exportSuggestions(suggestions, "json", jsonPath, insights);
     files.push(jsonPath);
 
-    // Export as Markdown
+    // Export as Markdown (includes insights sections)
     const mdPath = path.join(patchesDir, `report-${timestamp}.md`);
-    await exportSuggestions(suggestions, "markdown", mdPath);
+    await exportSuggestions(suggestions, "markdown", mdPath, insights);
     files.push(mdPath);
 
     // Generate patch file (if there are code changes)
@@ -101,7 +110,7 @@ export function ExportPanel({
     return (
       <Box flexDirection="column" paddingY={1}>
         <Box>
-          <Text color="#8ab4f8">
+          <Text color="#ff6f54">
             <Spinner type="dots" /> Exporting results...
           </Text>
         </Box>
@@ -162,7 +171,7 @@ export function ExportPanel({
                   [N]
                 </Text>{" "}
                 No{" "}
-                <Text color="#8ab4f8" bold>
+                <Text color="#f9e2af" bold>
                   [C]
                 </Text>{" "}
                 Configure

@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useMemo, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
+import SelectInput from "ink-select-input";
 import { colors, symbols } from "../theme.js";
 import { Panel } from "./Panel.js";
 
@@ -12,7 +13,7 @@ interface StartMenuProps {
 
 interface MenuOption {
   label: string;
-  action: () => void;
+  value: string;
   icon: string;
 }
 
@@ -22,61 +23,62 @@ export function StartMenu({
   onSettings,
   onExit,
 }: StartMenuProps) {
-  const [selectedIndex, setSelectedIndex] = useState(0);
-
-  // Memoize options array to prevent recreation on every render
+  // Memoize options array
   const options = useMemo<MenuOption[]>(
     () => [
-      { label: "Run scan", action: onRunScan, icon: ">" },
-      { label: "Choose model", action: onChooseModel, icon: "*" },
-      { label: "Settings", action: onSettings, icon: "+" },
-      { label: "Exit", action: onExit, icon: "x" },
+      { label: "> Run scan", value: "scan", icon: ">" },
+      { label: "* Choose model", value: "model", icon: "*" },
+      { label: "+ Settings", value: "settings", icon: "+" },
+      { label: "x Exit", value: "exit", icon: "x" },
     ],
-    [onRunScan, onChooseModel, onSettings, onExit],
+    [],
   );
 
-  // Memoize input handler
-  const handleInput = useCallback(
-    (input: string, key: any) => {
-      if (input === "z") {
-        process.exit(0);
-      } else if (key.upArrow) {
-        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : options.length - 1));
-      } else if (key.downArrow) {
-        setSelectedIndex((prev) => (prev < options.length - 1 ? prev + 1 : 0));
-      } else if (key.return) {
-        // Boundary check
-        if (selectedIndex >= 0 && selectedIndex < options.length) {
-          options[selectedIndex].action();
-        }
-      } else if (input === "q" || key.escape) {
-        onExit();
+  // Global exit shortcut
+  useInput((input, key) => {
+    if (input === "z") {
+      process.exit(0);
+    } else if (input === "q" || key.escape) {
+      onExit();
+    }
+  });
+
+  // Handle selection
+  const handleSelect = useCallback(
+    (item: { value: string }) => {
+      switch (item.value) {
+        case "scan":
+          onRunScan();
+          break;
+        case "model":
+          onChooseModel();
+          break;
+        case "settings":
+          onSettings();
+          break;
+        case "exit":
+          onExit();
+          break;
       }
     },
-    [options, selectedIndex, onExit],
+    [onRunScan, onChooseModel, onSettings, onExit],
   );
-
-  useInput(handleInput);
 
   return (
     <Panel title="What would you like to do?" borderColor={colors.primary}>
       <Box flexDirection="column">
-        {options.map((option) => (
-          <Box key={option.label} marginBottom={1}>
-            <Text
-              color={
-                selectedIndex === options.indexOf(option)
-                  ? colors.primary
-                  : colors.gray
-              }
-            >
-              {selectedIndex === options.indexOf(option)
-                ? symbols.pointer
-                : " "}{" "}
-              {option.icon} {option.label}
+        <SelectInput
+          items={options}
+          onSelect={handleSelect}
+          indicatorComponent={({ isSelected }) => (
+            <Text color={isSelected ? colors.primary : colors.gray}>
+              {isSelected ? symbols.pointer : " "}{" "}
             </Text>
-          </Box>
-        ))}
+          )}
+          itemComponent={({ isSelected, label }) => (
+            <Text color={isSelected ? colors.primary : "#f2e9e4"}>{label}</Text>
+          )}
+        />
 
         <Box
           marginTop={1}
@@ -86,7 +88,8 @@ export function StartMenu({
           borderColor={colors.gray}
         >
           <Text color={colors.gray}>
-            ↑↓: Navigate | Enter: Select | q: Quit
+            {symbols.arrowUp}
+            {symbols.arrowDown}: Navigate | Enter: Select | q: Quit
           </Text>
         </Box>
       </Box>

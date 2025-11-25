@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import React, { useState, useEffect } from "react";
 import { render, Text, Box, useInput } from "ink";
+import { withFullScreen, useScreenSize, FullScreenBox } from "fullscreen-ink";
 import TextInput from "ink-text-input";
 import { Command } from "commander";
 import path from "path";
@@ -28,6 +29,13 @@ import {
   FileSuggestion,
 } from "./engine/analysis.js";
 import { theme, symbols } from "./theme.js";
+
+// Helper to render in fullscreen mode
+function renderFullscreen(element: React.ReactElement) {
+  const { instance, start } = withFullScreen(element);
+  start();
+  return instance;
+}
 
 type AppPhase =
   | "init"
@@ -354,7 +362,13 @@ function App({
   };
 
   return (
-    <Box flexDirection="column" alignItems="center" paddingX={2} paddingY={1}>
+    <FullScreenBox
+      flexDirection="column"
+      alignItems="center"
+      justifyContent="flex-start"
+      paddingX={2}
+      paddingY={1}
+    >
       <Box flexDirection="column" width="80%">
         {/* Single logo at App level */}
         <Logo subtitle={getSubtitle()} message={repoSummary} />
@@ -495,7 +509,7 @@ function App({
           </Box>
         )}
       </Box>
-    </Box>
+    </FullScreenBox>
   );
 }
 
@@ -511,14 +525,14 @@ program
   .command("model")
   .description("Select or switch AI model provider and model")
   .action(() => {
-    render(<App command="model" />);
+    renderFullscreen(<App command="model" />);
   });
 
 program
   .command("ask [question]")
   .description("Ask a one-off question about your code")
   .action((question) => {
-    render(<App command="ask" askQuestion={question} />);
+    renderFullscreen(<App command="ask" askQuestion={question} />);
   });
 
 program
@@ -546,7 +560,7 @@ program
       }
     }
 
-    render(
+    renderFullscreen(
       <App command="run" context={context} concurrency={options.concurrency} />,
     );
   });
@@ -557,7 +571,7 @@ program
     "Start interactive menu (choose: run scan, choose model, or exit)",
   )
   .action(() => {
-    render(<App command="start" />);
+    renderFullscreen(<App command="start" />);
   });
 
 program
@@ -572,7 +586,7 @@ program
       process.exit(1);
     }
 
-    render(
+    renderFullscreen(
       <Box flexDirection="column">
         <Logo subtitle="Review Previous Results" />
         <ReviewPanel
@@ -598,7 +612,7 @@ program
       process.exit(1);
     }
 
-    render(
+    renderFullscreen(
       <Box flexDirection="column">
         <Logo subtitle="Exporting Results" />
         <ExportPanel

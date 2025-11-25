@@ -5,6 +5,18 @@ import os from "os";
 export type AgentType = "claude" | "cursor" | "gemini" | "codex" | "none";
 export type ContextFormat = "minimal" | "comprehensive";
 
+export interface InsightsConfig {
+  enableDependencyAnalysis: boolean;
+  enableCodeAgeMetrics: boolean;
+  checkOutdatedDeps: boolean;
+  codeAgeThresholds: {
+    hotZoneMaxDays: number;
+    coldZoneMinDays: number;
+    orphanedFileMinDays: number;
+  };
+  excludeFromAgeAnalysis: string[];
+}
+
 export interface HandoffConfig {
   enabled: boolean;
   targetAgent: AgentType;
@@ -42,6 +54,7 @@ export interface ChurnConfig {
     concurrency?: number;
   };
   handoff?: HandoffConfig;
+  insights?: InsightsConfig;
 }
 
 export interface ProjectConfig {
@@ -348,4 +361,35 @@ export async function updateHandoffConfig(
   updates: Partial<HandoffConfig>,
 ): Promise<void> {
   await saveHandoffConfig(updates);
+}
+
+// Get default insights configuration
+export function getDefaultInsightsConfig(): InsightsConfig {
+  return {
+    enableDependencyAnalysis: true,
+    enableCodeAgeMetrics: true,
+    checkOutdatedDeps: false,
+    codeAgeThresholds: {
+      hotZoneMaxDays: 30,
+      coldZoneMinDays: 90,
+      orphanedFileMinDays: 180,
+    },
+    excludeFromAgeAnalysis: ["node_modules", ".git", "dist", "build", ".churn"],
+  };
+}
+
+// Get insights configuration
+export async function getInsightsConfig(): Promise<InsightsConfig> {
+  const config = await loadConfig();
+  return config.insights || getDefaultInsightsConfig();
+}
+
+// Update insights configuration
+export async function updateInsightsConfig(
+  updates: Partial<InsightsConfig>,
+): Promise<void> {
+  const config = await loadConfig();
+  const currentInsights = config.insights || getDefaultInsightsConfig();
+  config.insights = { ...currentInsights, ...updates };
+  await saveConfig(config);
 }

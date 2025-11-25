@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { Text, Box, useInput } from "ink";
 import Spinner from "ink-spinner";
-import { theme, createProgressBar, formatDuration, symbols } from "../theme.js";
+import { useScreenSize } from "fullscreen-ink";
+import {
+  theme,
+  createProgressBar,
+  formatDuration,
+  symbols,
+  box,
+  colors,
+} from "../theme.js";
 import { ModelConfig } from "../engine/models.js";
 import {
   runAnalysis,
@@ -9,7 +17,7 @@ import {
   AnalysisResult,
   AnalysisProgress,
 } from "../engine/analysis.js";
-import { generateReport, saveReport } from "../engine/reports.js";
+import { generateReport, saveReport, ChurnReport } from "../engine/reports.js";
 
 interface RunConsoleProps {
   modelConfig: ModelConfig;
@@ -18,12 +26,19 @@ interface RunConsoleProps {
   concurrency?: number;
 }
 
+// Helper for dot-leader formatting (label ... value)
+function formatStat(label: string, value: string, width: number): string {
+  const dots = width - label.length - value.length - 2;
+  return label + " " + ".".repeat(Math.max(1, dots)) + " " + value;
+}
+
 export function RunConsole({
   modelConfig,
   context,
   onComplete,
   concurrency,
 }: RunConsoleProps) {
+  const { width: terminalWidth, height: terminalHeight } = useScreenSize();
   const [progress, setProgress] = useState<AnalysisProgress>({
     phase: "scanning",
     current: 0,
@@ -32,8 +47,14 @@ export function RunConsole({
   const [startTime] = useState(Date.now());
   const [elapsed, setElapsed] = useState(0);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [report, setReport] = useState<ChurnReport | null>(null);
   const [waitingForConfirmation, setWaitingForConfirmation] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
+  const [generatingInsights, setGeneratingInsights] = useState(false);
+
+  // Calculate content width
+  const contentWidth = Math.min(55, terminalWidth - 10);
+  const innerWidth = contentWidth - 4; // Account for border + padding
 
   // Wait for user to press any key before transitioning to review
   useInput((input, key) => {
@@ -42,7 +63,7 @@ export function RunConsole({
     }
   });
 
-  // Live timer - updates every second
+  // Timer - updates every second
   useEffect(() => {
     const timer = setInterval(() => {
       setElapsed(Date.now() - startTime);
@@ -68,9 +89,12 @@ export function RunConsole({
 
         setResult(analysisResult);
 
-        // Generate and save report
-        const report = await generateReport(analysisResult);
-        await saveReport(report);
+        // Generate and save report (includes insights)
+        setGeneratingInsights(true);
+        const generatedReport = await generateReport(analysisResult);
+        setReport(generatedReport);
+        await saveReport(generatedReport);
+        setGeneratingInsights(false);
 
         // Wait for user confirmation instead of auto-transitioning
         setWaitingForConfirmation(true);
@@ -82,208 +106,301 @@ export function RunConsole({
     runAnalysisProcess();
   }, [hasStarted, context, modelConfig, concurrency]);
 
-  const percent = progress.total > 0 ? progress.current / progress.total : 0;
+  // Calculate how many batch items to show based on terminal height
+  const maxBatchItems = Math.max(2, Math.min(5, terminalHeight - 22));
 
-  return (
-    <Box flexDirection="column" paddingY={1}>
-      <Box marginBottom={1}>
-        <Text color="#f2e9e4">
-          Running Analysis
-          <Text color="#a6adc8"> • </Text>
-          <Text color="#8ab4f8">
-            {modelConfig.provider}/{modelConfig.model}
-          </Text>
-        </Text>
-      </Box>
+  // Create horizontal divider
+  const divider =
+    box.verticalRight +
+    box.horizontal.repeat(contentWidth - 2) +
+    box.verticalLeft;
 
-      {/* Phase indicator */}
-      <Box marginBottom={1}>
-        <Text color="#ff6f54">
-          {progress.phase === "complete" ? (
-            symbols.tick
-          ) : (
-            <Spinner type="dots" />
-          )}
-        </Text>
-        <Text color="#f2e9e4"> {getPhaseLabel(progress.phase)}</Text>
-      </Box>
-
-      {/* Progress bar - only show during analysis */}
-      {progress.total > 0 && progress.phase !== "complete" && (
-        <Box flexDirection="column" marginBottom={1}>
-          <Box marginBottom={1}>
-            <Text>{createProgressBar(percent, 50)}</Text>
-          </Box>
-          <Box>
-            <Text color="#a6adc8">
-              {progress.current}/{progress.total} files
-              {progress.inProgress !== undefined && progress.inProgress > 0 && (
-                <Text color="#ff6f54">
-                  {" "}
-                  • {progress.inProgress} in progress
-                </Text>
-              )}
-            </Text>
-          </Box>
-        </Box>
-      )}
-
-      {/* Currently analyzing (parallel batch) - only show during analysis */}
-      {progress.currentBatch &&
-        progress.currentBatch.length > 0 &&
-        progress.phase !== "complete" && (
-          <Box flexDirection="column" marginBottom={1}>
-            <Box marginBottom={1}>
-              <Text color="#a6adc8">
-                Currently analyzing ({progress.inProgress} in progress):
-              </Text>
-            </Box>
-            {progress.currentBatch.map((file, i) => (
-              <Box key={i} paddingLeft={2}>
-                <Text color="#f2e9e4">• {file}</Text>
-              </Box>
-            ))}
-          </Box>
-        )}
-
-      {/* Status message - only show during analysis */}
-      {progress.message && progress.phase !== "complete" && (
-        <Box marginBottom={1}>
-          <Text color="#a6adc8">{progress.message}</Text>
-        </Box>
-      )}
-
-      {/* Elapsed time and ETA - only show during analysis */}
-      {progress.phase !== "complete" && (
-        <Box marginBottom={1}>
-          <Text color="#a6adc8">
-            Elapsed: {formatDuration(elapsed)}
-            {progress.avgTimePerFile !== undefined &&
-              progress.avgTimePerFile > 0 && (
-                <Text>
-                  {" "}
-                  • Avg: {formatDuration(progress.avgTimePerFile)}/file
-                </Text>
-              )}
-            {progress.eta !== undefined && progress.eta > 0 && (
-              <Text color="#8ab4f8">
-                {" "}
-                • ETA: {formatDuration(progress.eta)}
-              </Text>
-            )}
-          </Text>
-        </Box>
-      )}
-
-      {/* Results summary */}
-      {result && progress.phase === "complete" && (
+  // In-progress view
+  if (!result || progress.phase !== "complete") {
+    return (
+      <Box flexDirection="column" alignItems="center" paddingY={1}>
         <Box
           flexDirection="column"
-          marginTop={1}
-          paddingTop={1}
-          borderStyle="single"
-          borderColor="#ff9b85"
+          width={contentWidth}
+          borderStyle="round"
+          borderColor={colors.secondary}
+          paddingX={1}
         >
-          <Box marginBottom={1}>
-            <Text color="#ff6f54" bold>
-              Analysis Complete
+          {/* Header */}
+          <Box justifyContent="center" marginBottom={1}>
+            <Text color={colors.text}>Running Analysis</Text>
+            <Text color={colors.gray}> {symbols.bullet} </Text>
+            <Text color={colors.primary}>
+              {modelConfig.provider}/{modelConfig.model}
             </Text>
           </Box>
 
-          <Box marginBottom={1}>
-            <Text color="#f2e9e4">
-              Files Analyzed:{" "}
-              {theme.primary(result.summary.filesAnalyzed.toString())}
+          {/* Divider */}
+          <Box marginX={-1}>
+            <Text color={colors.secondary}>{divider}</Text>
+          </Box>
+
+          {/* Phase indicator */}
+          <Box marginTop={1} marginBottom={1}>
+            <Text color={colors.primary}>
+              <Spinner type="dots" />
+            </Text>
+            <Text color={colors.text}>
+              {" "}
+              {generatingInsights
+                ? "Generating insights..."
+                : getPhaseLabel(progress.phase)}
             </Text>
           </Box>
 
-          <Box marginBottom={1}>
-            <Text color="#f2e9e4">
-              Suggestions:{" "}
-              {theme.primary(result.summary.suggestions.toString())}
-            </Text>
-          </Box>
-
-          <Box marginBottom={1}>
-            <Text color="#f2e9e4">
-              Duration: {theme.primary(formatDuration(result.summary.duration))}
-            </Text>
-          </Box>
-
-          {/* Token and cost summary */}
-          {result.summary.cacheHits > 0 && (
-            <Box marginBottom={1}>
-              <Text color="#f2e9e4">
-                Cache Hits: {theme.success(result.summary.cacheHits.toString())}{" "}
-                <Text color="#a6adc8">
-                  (saved {result.summary.tokensSaved.toLocaleString()} tokens)
-                </Text>
+          {/* Progress bar */}
+          {progress.total > 0 && (
+            <Box marginBottom={1} justifyContent="center">
+              <Text>
+                {createProgressBar(
+                  progress.current / progress.total,
+                  innerWidth - 8,
+                )}
+              </Text>
+              <Text color={colors.gray}>
+                {" "}
+                {Math.round((progress.current / progress.total) * 100)}%
               </Text>
             </Box>
           )}
 
-          {result.summary.tokensUsed > 0 && (
-            <Box flexDirection="column" marginBottom={1}>
-              <Box>
-                <Text color="#f2e9e4">
-                  Tokens:{" "}
-                  {theme.info(result.summary.tokensUsed.toLocaleString())} input
+          {/* Progress count */}
+          {progress.total > 0 && (
+            <Box justifyContent="center" marginBottom={1}>
+              <Text color={colors.gray}>
+                {progress.current}/{progress.total} files
+              </Text>
+              {progress.inProgress !== undefined && progress.inProgress > 0 && (
+                <Text color={colors.primary}>
+                  {" "}
+                  {symbols.bullet} {progress.inProgress} in progress
                 </Text>
-              </Box>
-              {result.summary.estimatedCost > 0 && (
-                <Box>
-                  <Text color="#f2e9e4">
-                    Cost:{" "}
-                    {theme.warning(
-                      "$" + result.summary.estimatedCost.toFixed(4),
-                    )}
-                    {result.summary.costSaved > 0 && (
-                      <Text color="#a6adc8">
-                        {" "}
-                        (saved ${result.summary.costSaved.toFixed(4)})
-                      </Text>
-                    )}
-                  </Text>
-                </Box>
               )}
             </Box>
           )}
 
-          {/* Categories breakdown */}
-          {Object.keys(result.summary.categories).length > 0 && (
-            <Box flexDirection="column" marginTop={1}>
-              <Box marginBottom={1}>
-                <Text color="#a6adc8">Categories:</Text>
+          {/* Currently analyzing */}
+          {progress.currentBatch &&
+            progress.currentBatch.length > 0 &&
+            progress.phase !== "complete" && (
+              <Box flexDirection="column" marginBottom={1}>
+                <Box marginBottom={1}>
+                  <Text color={colors.gray}>Currently analyzing:</Text>
+                </Box>
+                {progress.currentBatch
+                  .slice(0, maxBatchItems)
+                  .map((file, i) => (
+                    <Box key={i} paddingLeft={1}>
+                      <Text color={colors.gray}>{symbols.bullet} </Text>
+                      <Text color={colors.text}>
+                        {truncatePath(file, innerWidth - 4)}
+                      </Text>
+                    </Box>
+                  ))}
+                {progress.currentBatch.length > maxBatchItems && (
+                  <Box paddingLeft={1}>
+                    <Text color={colors.gray}>
+                      {symbols.bullet} +
+                      {progress.currentBatch.length - maxBatchItems} more
+                    </Text>
+                  </Box>
+                )}
               </Box>
+            )}
+
+          {/* Timing stats */}
+          <Box justifyContent="center">
+            <Text color={colors.gray}>
+              Elapsed: {formatDuration(elapsed)}
+              {progress.avgTimePerFile !== undefined &&
+                progress.avgTimePerFile > 0 && (
+                  <Text>
+                    {" "}
+                    {symbols.bullet} Avg:{" "}
+                    {formatDuration(progress.avgTimePerFile)}/file
+                  </Text>
+                )}
+              {progress.eta !== undefined && progress.eta > 0 && (
+                <Text color={colors.primary}>
+                  {" "}
+                  {symbols.bullet} ETA: {formatDuration(progress.eta)}
+                </Text>
+              )}
+            </Text>
+          </Box>
+        </Box>
+      </Box>
+    );
+  }
+
+  // Completion view
+  return (
+    <Box flexDirection="column" alignItems="center" paddingY={1}>
+      <Box
+        flexDirection="column"
+        width={contentWidth}
+        borderStyle="round"
+        borderColor={colors.success}
+        paddingX={1}
+      >
+        {/* Header */}
+        <Box justifyContent="center" marginBottom={1}>
+          <Text color={colors.success} bold>
+            {symbols.tick} Analysis Complete
+          </Text>
+        </Box>
+
+        {/* Divider */}
+        <Box marginX={-1}>
+          <Text color={colors.success}>{divider}</Text>
+        </Box>
+
+        {/* Main stats */}
+        <Box flexDirection="column" marginTop={1}>
+          <Text color={colors.text}>
+            {formatStat(
+              "Files Analyzed",
+              result.summary.filesAnalyzed.toString(),
+              innerWidth,
+            )}
+          </Text>
+          <Text color={colors.text}>
+            {formatStat(
+              "Suggestions",
+              result.summary.suggestions.toString(),
+              innerWidth,
+            )}
+          </Text>
+          <Text color={colors.text}>
+            {formatStat(
+              "Duration",
+              formatDuration(result.summary.duration),
+              innerWidth,
+            )}
+          </Text>
+          {result.summary.cacheHits > 0 && (
+            <Text color={colors.text}>
+              {formatStat(
+                "Cache Hits",
+                result.summary.cacheHits.toString(),
+                innerWidth,
+              )}
+            </Text>
+          )}
+        </Box>
+
+        {/* Token stats */}
+        {result.summary.tokensUsed > 0 && (
+          <>
+            <Box marginX={-1} marginTop={1}>
+              <Text color={colors.gray}>{divider}</Text>
+            </Box>
+            <Box flexDirection="column" marginTop={1}>
+              <Text color={colors.text}>
+                {formatStat(
+                  "Tokens",
+                  result.summary.tokensUsed.toLocaleString(),
+                  innerWidth,
+                )}
+              </Text>
+              {result.summary.estimatedCost > 0 && (
+                <Text color={colors.text}>
+                  {formatStat(
+                    "Cost",
+                    "$" + result.summary.estimatedCost.toFixed(4),
+                    innerWidth,
+                  )}
+                </Text>
+              )}
+            </Box>
+          </>
+        )}
+
+        {/* Categories */}
+        {Object.keys(result.summary.categories).length > 0 && (
+          <>
+            <Box marginX={-1} marginTop={1}>
+              <Text color={colors.gray}>{divider}</Text>
+            </Box>
+            <Box flexDirection="column" marginTop={1}>
+              <Text color={colors.gray} bold>
+                Categories
+              </Text>
               {Object.entries(result.summary.categories).map(
                 ([category, count]) => (
-                  <Box key={category} paddingLeft={2}>
-                    <Text color="#f2e9e4">
-                      {getCategoryIcon(category)} {category}:{" "}
-                      {theme.primary(count.toString())}
+                  <Box key={category} paddingLeft={1}>
+                    <Text color={colors.text}>
+                      {formatStat(
+                        symbols.bullet + " " + category,
+                        count.toString(),
+                        innerWidth - 2,
+                      )}
                     </Text>
                   </Box>
                 ),
               )}
             </Box>
-          )}
+          </>
+        )}
 
-          <Box marginTop={1}>
-            <Text color="#a6adc8">
-              Report saved to .churn/reports/churn-reports.json
-            </Text>
-          </Box>
-
-          {waitingForConfirmation && (
-            <Box
-              marginTop={1}
-              paddingTop={1}
-              borderStyle="single"
-              borderColor="#8ab4f8"
-            >
-              <Text color="#8ab4f8">Press any key to review results...</Text>
+        {/* Insights */}
+        {report?.insights && (
+          <>
+            <Box marginX={-1} marginTop={1}>
+              <Text color={colors.gray}>{divider}</Text>
             </Box>
-          )}
+            <Box flexDirection="column" marginTop={1}>
+              <Text color={colors.gray} bold>
+                Insights
+              </Text>
+              {report.insights.dependencies && (
+                <Box paddingLeft={1}>
+                  <Text color={colors.text}>
+                    {symbols.bullet} Dependencies:{" "}
+                    {report.insights.dependencies.summary.totalUsed} used,{" "}
+                    {report.insights.dependencies.summary.totalUnused} unused
+                  </Text>
+                </Box>
+              )}
+              {report.insights.codeAge && (
+                <Box paddingLeft={1}>
+                  <Text color={colors.text}>
+                    {symbols.bullet} Code Age:{" "}
+                    {report.insights.codeAge.hotZones.length} hot,{" "}
+                    {report.insights.codeAge.coldZones.length} cold
+                  </Text>
+                </Box>
+              )}
+              {report.insights.codeAge &&
+                report.insights.codeAge.orphanedFiles.length > 0 && (
+                  <Box paddingLeft={1}>
+                    <Text color={colors.warning}>
+                      {symbols.bullet} Orphaned:{" "}
+                      {report.insights.codeAge.orphanedFiles.length} files
+                    </Text>
+                  </Box>
+                )}
+            </Box>
+          </>
+        )}
+
+        {/* Report saved note */}
+        <Box marginTop={1} justifyContent="center">
+          <Text color={colors.gray} dimColor>
+            Report saved to .churn/reports/
+          </Text>
+        </Box>
+      </Box>
+
+      {/* Press any key prompt - outside the box */}
+      {waitingForConfirmation && (
+        <Box marginTop={1}>
+          <Text color={colors.primary}>Press any key to review...</Text>
         </Box>
       )}
     </Box>
@@ -305,6 +422,7 @@ function getPhaseLabel(phase: AnalysisProgress["phase"]): string {
   }
 }
 
-function getCategoryIcon(category: string): string {
-  return "•";
+function truncatePath(path: string, maxLength: number): string {
+  if (path.length <= maxLength) return path;
+  return "..." + path.slice(-(maxLength - 3));
 }

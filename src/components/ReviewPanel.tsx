@@ -1,25 +1,92 @@
 import React, { useState, useCallback } from "react";
 import { Text, Box, useInput } from "ink";
+import { useScreenSize } from "fullscreen-ink";
 import { theme, symbols } from "../theme.js";
 import { AnalysisResult, FileSuggestion } from "../engine/analysis.js";
+import { VirtualizedList, VirtualizedListItem } from "./VirtualizedList.js";
 
 interface ReviewPanelProps {
   result: AnalysisResult;
   onComplete: (accepted: FileSuggestion[]) => void;
 }
 
+interface SuggestionItem extends VirtualizedListItem {
+  suggestion: FileSuggestion;
+  index: number;
+}
+
+// Helper to truncate text to fit width
+function truncateText(text: string, maxWidth: number): string {
+  if (text.length <= maxWidth) return text;
+  return text.substring(0, maxWidth - 3) + "...";
+}
+
+// Helper to wrap text into lines
+function wrapText(text: string, maxWidth: number): string[] {
+  if (maxWidth <= 0) return [text];
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let currentLine = "";
+
+  for (const word of words) {
+    if (currentLine.length === 0) {
+      currentLine = word;
+    } else if (currentLine.length + 1 + word.length <= maxWidth) {
+      currentLine += " " + word;
+    } else {
+      lines.push(currentLine);
+      currentLine = word;
+    }
+  }
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+  return lines.length > 0 ? lines : [""];
+}
+
+// Helper to truncate code blocks (show first N lines)
+function truncateCode(
+  code: string,
+  maxLines: number,
+  maxWidth: number,
+): string {
+  const lines = code.split("\n").slice(0, maxLines);
+  const truncated = lines.map((line) =>
+    line.length > maxWidth ? line.substring(0, maxWidth - 3) + "..." : line,
+  );
+  if (code.split("\n").length > maxLines) {
+    truncated.push("...");
+  }
+  return truncated.join("\n");
+}
+
 export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
+  const { width: terminalWidth, height: terminalHeight } = useScreenSize();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [acceptedSuggestions, setAcceptedSuggestions] = useState<Set<number>>(
     new Set(),
   );
   const [viewMode, setViewMode] = useState<"list" | "detail">("list");
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
 
   const suggestions = result.suggestions;
   const currentSuggestion = suggestions[currentIndex];
+  const summary = result.summary;
 
-  const handleInput = useCallback(
-    (input: string, key: any) => {
+  // Calculate content width (account for borders and padding)
+  const contentWidth = Math.max(40, terminalWidth - 8);
+  const codeMaxLines = Math.max(5, Math.floor((terminalHeight - 25) / 2));
+
+  // Convert suggestions to list items
+  const listItems: SuggestionItem[] = suggestions.map((suggestion, index) => ({
+    key: `${suggestion.file}-${index}`,
+    suggestion,
+    index,
+  }));
+
+  // Handle global and view-specific inputs
+  useInput(
+    (input, key) => {
       // Global shortcuts
       if (input === "z") {
         process.exit(0);
@@ -32,12 +99,9 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
       }
 
       if (viewMode === "list") {
-        if (key.upArrow) {
-          setCurrentIndex(Math.max(0, currentIndex - 1));
-        } else if (key.downArrow) {
-          setCurrentIndex(Math.min(suggestions.length - 1, currentIndex + 1));
-        } else if (key.return) {
-          setViewMode("detail");
+        if (input === "s" || input === "S") {
+          // Toggle summary
+          setSummaryExpanded(!summaryExpanded);
         } else if (input === "a") {
           // Accept all
           const allIndices = new Set(suggestions.map((_, i) => i));
@@ -51,6 +115,15 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
             acceptedSuggestions.has(i),
           );
           onComplete(accepted);
+        } else if (input === " ") {
+          // Toggle current item
+          const newSet = new Set(acceptedSuggestions);
+          if (newSet.has(currentIndex)) {
+            newSet.delete(currentIndex);
+          } else {
+            newSet.add(currentIndex);
+          }
+          setAcceptedSuggestions(newSet);
         }
       } else if (viewMode === "detail") {
         if (key.escape || input === "q") {
@@ -67,10 +140,47 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
         }
       }
     },
-    [viewMode, currentIndex, suggestions, acceptedSuggestions, onComplete],
+    { isActive: true },
   );
 
-  useInput(handleInput);
+  // Render a single suggestion item in the list
+  const renderSuggestionItem = useCallback(
+    (item: SuggestionItem, index: number, isSelected: boolean) => {
+      const { suggestion } = item;
+      const isAccepted = acceptedSuggestions.has(index);
+
+      // Truncate title to fit terminal width
+      const maxTitleLength = Math.max(30, terminalWidth - 10);
+      const truncatedTitle = truncateText(suggestion.title, maxTitleLength);
+
+      return (
+        <Box flexDirection="column" marginBottom={0}>
+          <Box>
+            <Text color={isSelected ? "#ff6f54" : "#a6adc8"}>
+              {isSelected ? symbols.pointer : " "}{" "}
+            </Text>
+            <Text color={isAccepted ? "#a6e3a1" : "#f2e9e4"}>
+              {truncateText(suggestion.file, 40)}
+            </Text>
+            <Text color="#a6adc8"> • </Text>
+            <Text color={getSeverityColor(suggestion.severity)}>
+              {suggestion.severity}
+            </Text>
+            <Text color="#a6adc8"> • </Text>
+            <Text color={isAccepted ? "#a6e3a1" : "#f2e9e4"}>
+              {isAccepted ? symbols.tick : " "}
+            </Text>
+          </Box>
+          <Box paddingLeft={3}>
+            <Text color={isSelected ? "#f2e9e4" : "#a6adc8"}>
+              {truncatedTitle}
+            </Text>
+          </Box>
+        </Box>
+      );
+    },
+    [acceptedSuggestions, terminalWidth],
+  );
 
   if (suggestions.length === 0) {
     return (
@@ -88,89 +198,142 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
   }
 
   if (viewMode === "list") {
-    // Calculate viewport window (adaptive based on terminal size)
-    const terminalHeight = process.stdout.rows || 24;
-    const windowSize = Math.max(10, terminalHeight - 15); // Leave room for header/footer
-    const windowStart = Math.floor(currentIndex / windowSize) * windowSize;
-    const windowEnd = Math.min(windowStart + windowSize, suggestions.length);
-    const visibleSuggestions = suggestions.slice(windowStart, windowEnd);
+    // Calculate reserved lines based on summary expanded state
+    const summaryLines = summaryExpanded ? 12 : 3;
+    const reservedLines = summaryLines + 8;
 
     return (
       <Box flexDirection="column" paddingY={1}>
-        <Box marginBottom={1}>
-          <Text color="#f2e9e4" bold>
-            Review Findings ({acceptedSuggestions.size}/{suggestions.length}{" "}
-            accepted)
-          </Text>
-        </Box>
-
+        {/* Collapsible Summary Section */}
         <Box
           flexDirection="column"
           marginBottom={1}
-          paddingBottom={1}
           borderStyle="single"
-          borderColor="#ff9b85"
+          borderColor={summaryExpanded ? "#ff9b85" : "#a6adc8"}
+          paddingX={1}
         >
-          {visibleSuggestions.map((suggestion, localIdx) => {
-            const i = windowStart + localIdx;
-            const isSelected = i === currentIndex;
-            const isAccepted = acceptedSuggestions.has(i);
+          {/* Summary Header - always visible */}
+          <Box>
+            <Text color="#ff6f54">{summaryExpanded ? "v" : ">"} </Text>
+            <Text color="#f2e9e4" bold>
+              Summary
+            </Text>
+            <Text color="#a6adc8">
+              {" "}
+              • {summary.filesAnalyzed} files • {summary.suggestions} findings •
+              Press S to {summaryExpanded ? "collapse" : "expand"}
+            </Text>
+          </Box>
 
-            return (
-              <Box key={i} paddingX={1}>
-                <Text color={isSelected ? "#ff6f54" : "#a6adc8"}>
-                  {isSelected ? symbols.pointer : " "}
-                </Text>
-                <Text
-                  color={
-                    isAccepted ? "#a6e3a1" : isSelected ? "#ff6f54" : "#f2e9e4"
-                  }
-                >
-                  {isAccepted ? symbols.tick : " "} {suggestion.file}
-                </Text>
-                <Text color="#a6adc8"> • </Text>
-                <Text color={getSeverityColor(suggestion.severity)}>
-                  {suggestion.severity}
-                </Text>
-                <Text color="#a6adc8"> • </Text>
-                <Text color="#f2e9e4">{suggestion.title}</Text>
+          {/* Expanded Summary Content */}
+          {summaryExpanded && (
+            <Box flexDirection="column" marginTop={1}>
+              <Box>
+                <Text color="#a6adc8">Duration: </Text>
+                <Text color="#f2e9e4">{formatDuration(summary.duration)}</Text>
+                {summary.cacheHits > 0 && (
+                  <>
+                    <Text color="#a6adc8"> • Cache hits: </Text>
+                    <Text color="#a6e3a1">{summary.cacheHits}</Text>
+                  </>
+                )}
               </Box>
-            );
-          })}
 
-          {/* Scroll indicator */}
-          {suggestions.length > windowSize && (
-            <Box paddingX={1} marginTop={1}>
-              <Text color="#a6adc8">
-                Showing {windowStart + 1}-{windowEnd} of {suggestions.length}
-                {windowEnd < suggestions.length && " • Scroll down for more"}
-              </Text>
+              {summary.tokensUsed > 0 && (
+                <Box>
+                  <Text color="#a6adc8">Tokens: </Text>
+                  <Text color="#f2e9e4">
+                    {summary.tokensUsed.toLocaleString()}
+                  </Text>
+                  {summary.estimatedCost > 0 && (
+                    <>
+                      <Text color="#a6adc8"> • Cost: </Text>
+                      <Text color="#f9e2af">
+                        ${summary.estimatedCost.toFixed(4)}
+                      </Text>
+                    </>
+                  )}
+                </Box>
+              )}
+
+              {/* Categories breakdown */}
+              {Object.keys(summary.categories).length > 0 && (
+                <Box flexDirection="column" marginTop={1}>
+                  <Text color="#a6adc8">By category:</Text>
+                  <Box flexWrap="wrap" marginTop={1}>
+                    {Object.entries(summary.categories).map(
+                      ([cat, count], i) => (
+                        <Box key={cat} marginRight={2}>
+                          <Text color="#f2e9e4">{cat}: </Text>
+                          <Text color="#ff6f54">{count}</Text>
+                        </Box>
+                      ),
+                    )}
+                  </Box>
+                </Box>
+              )}
+
+              {/* Severity breakdown */}
+              <Box marginTop={1}>
+                <Text color="#a6adc8">By severity: </Text>
+                <Text color="#f38ba8">
+                  High: {countBySeverity(suggestions, "high")}
+                </Text>
+                <Text color="#a6adc8"> • </Text>
+                <Text color="#f9e2af">
+                  Medium: {countBySeverity(suggestions, "medium")}
+                </Text>
+                <Text color="#a6adc8"> • </Text>
+                <Text color="#a6adc8">
+                  Low: {countBySeverity(suggestions, "low")}
+                </Text>
+              </Box>
             </Box>
           )}
         </Box>
 
-        <Box flexDirection="column" marginTop={1}>
-          <Box marginBottom={1}>
-            <Text color="#a6adc8">Navigation:</Text>
-          </Box>
-          <Box paddingLeft={2}>
-            <Text color="#f2e9e4">
-              {symbols.arrowUp}
-              {symbols.arrowDown} Navigate • Enter View • Space Toggle • A
-              Accept All • N Clear • D Done
-            </Text>
-          </Box>
+        {/* Suggestions List */}
+        <VirtualizedList
+          items={listItems}
+          renderItem={renderSuggestionItem}
+          itemHeight={2}
+          initialIndex={currentIndex}
+          onSelectionChange={(index) => setCurrentIndex(index)}
+          onSelect={() => setViewMode("detail")}
+          isActive={viewMode === "list"}
+          borderColor="#ff9b85"
+          reservedLines={reservedLines}
+          title={`Findings (${acceptedSuggestions.size}/${suggestions.length} accepted)`}
+        />
+
+        {/* Navigation help */}
+        <Box marginTop={1}>
+          <Text color="#a6adc8">
+            {symbols.arrowUp}
+            {symbols.arrowDown} Nav • Enter View • Space Toggle • S Summary • A
+            All • N Clear • D Done
+          </Text>
         </Box>
       </Box>
     );
   }
 
-  // Detail view
+  // Detail view - with proper width constraints
+  const wrappedDescription = wrapText(
+    currentSuggestion.description,
+    contentWidth - 4,
+  );
+  const wrappedSuggestion = wrapText(
+    currentSuggestion.suggestion,
+    contentWidth - 6,
+  );
+
   return (
-    <Box flexDirection="column" paddingY={1}>
+    <Box flexDirection="column" paddingY={1} width={contentWidth}>
       <Box marginBottom={1}>
         <Text color="#f2e9e4" bold>
-          {currentSuggestion.file} ({currentIndex + 1}/{suggestions.length})
+          {truncateText(currentSuggestion.file, contentWidth - 15)} (
+          {currentIndex + 1}/{suggestions.length})
         </Text>
       </Box>
 
@@ -180,13 +343,16 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
         paddingY={1}
         borderStyle="single"
         borderColor="#ff9b85"
+        width={contentWidth}
       >
+        {/* Title */}
         <Box paddingX={1} marginBottom={1}>
-          <Text color="#ff6f54" bold>
-            {currentSuggestion.title}
+          <Text color="#ff6f54" bold wrap="truncate">
+            {truncateText(currentSuggestion.title, contentWidth - 4)}
           </Text>
         </Box>
 
+        {/* Category & Severity */}
         <Box paddingX={1} marginBottom={1}>
           <Text color="#a6adc8">Category: </Text>
           <Text color="#f2e9e4">{currentSuggestion.category}</Text>
@@ -196,36 +362,60 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
           </Text>
         </Box>
 
-        <Box paddingX={1} marginBottom={1}>
-          <Text color="#f2e9e4">{currentSuggestion.description}</Text>
+        {/* Description - wrapped */}
+        <Box flexDirection="column" paddingX={1} marginBottom={1}>
+          {wrappedDescription.map((line, i) => (
+            <Text key={i} color="#f2e9e4">
+              {line}
+            </Text>
+          ))}
         </Box>
 
-        <Box paddingX={1} marginBottom={1}>
+        {/* Suggestion - wrapped */}
+        <Box paddingX={1}>
           <Text color="#a6adc8">Suggestion:</Text>
         </Box>
-        <Box paddingX={2} marginBottom={1}>
-          <Text color="#f2e9e4">{currentSuggestion.suggestion}</Text>
+        <Box flexDirection="column" paddingX={2} marginBottom={1}>
+          {wrappedSuggestion.map((line, i) => (
+            <Text key={i} color="#f2e9e4">
+              {line}
+            </Text>
+          ))}
         </Box>
 
+        {/* Code blocks - truncated */}
         {currentSuggestion.code && (
           <Box flexDirection="column" paddingX={1}>
             <Box marginBottom={1}>
               <Text color="#f38ba8">Before:</Text>
             </Box>
-            <Box paddingX={2} marginBottom={1}>
-              <Text color="#a6adc8">{currentSuggestion.code.before}</Text>
+            <Box paddingX={1} marginBottom={1}>
+              <Text color="#a6adc8">
+                {truncateCode(
+                  currentSuggestion.code.before,
+                  codeMaxLines,
+                  contentWidth - 6,
+                )}
+              </Text>
             </Box>
 
             <Box marginBottom={1}>
               <Text color="#a6e3a1">After:</Text>
             </Box>
-            <Box paddingX={2}>
-              <Text color="#a6e3a1">{currentSuggestion.code.after}</Text>
+            <Box paddingX={1}>
+              <Text color="#a6e3a1">
+                {truncateCode(
+                  currentSuggestion.code.after,
+                  codeMaxLines,
+                  contentWidth - 6,
+                )}
+              </Text>
             </Box>
           </Box>
         )}
       </Box>
 
+      {/* Status */}
       <Box marginTop={1}>
         <Text
           color={acceptedSuggestions.has(currentIndex) ? "#a6e3a1" : "#a6adc8"}
@@ -236,13 +426,9 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
         </Text>
       </Box>
 
-      <Box flexDirection="column" marginTop={1}>
-        <Box marginBottom={1}>
-          <Text color="#a6adc8">Actions:</Text>
-        </Box>
-        <Box paddingLeft={2}>
-          <Text color="#f2e9e4">Space Toggle • Esc/Q Back to list</Text>
-        </Box>
+      {/* Actions */}
+      <Box marginTop={1}>
+        <Text color="#a6adc8">Space Toggle • Esc/Q Back to list</Text>
       </Box>
     </Box>
   );
@@ -259,4 +445,20 @@ function getSeverityColor(severity: string): string {
     default:
       return "#f2e9e4";
   }
+}
+
+function countBySeverity(
+  suggestions: FileSuggestion[],
+  severity: string,
+): number {
+  return suggestions.filter((s) => s.severity === severity).length;
+}
+
+function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  if (minutes > 0) {
+    return `${minutes}m ${seconds % 60}s`;
+  }
+  return `${seconds}s`;
 }

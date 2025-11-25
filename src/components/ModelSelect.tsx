@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Text, Box, useInput } from "ink";
 import SelectInput from "ink-select-input";
 import TextInput from "ink-text-input";
+import { useScreenSize } from "fullscreen-ink";
 import { theme, symbols } from "../theme.js";
 import { getProviderLabel } from "../brand-icons.js";
 import {
@@ -28,6 +29,7 @@ interface ModelSelectProps {
 type SelectPhase = "provider" | "model" | "apiKey" | "complete";
 
 export function ModelSelect({ onComplete }: ModelSelectProps) {
+  const { height: terminalHeight } = useScreenSize();
   const [phase, setPhase] = useState<SelectPhase>("provider");
   const [selectedProvider, setSelectedProvider] =
     useState<ModelProvider | null>(null);
@@ -209,6 +211,9 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
     }
   }, [selectedProvider, selectedModel, apiKey, completeSelection]);
 
+  // Calculate limit based on terminal height
+  const listLimit = Math.max(5, terminalHeight - 12);
+
   if (phase === "provider") {
     return (
       <Box flexDirection="column" paddingY={1}>
@@ -219,9 +224,10 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
         <SelectInput
           items={providerItems}
           onSelect={handleProviderSelect}
+          limit={listLimit}
           indicatorComponent={({ isSelected }) => (
             <Text color={isSelected ? "#ff6f54" : "#a6adc8"}>
-              {isSelected ? symbols.pointer : " "}
+              {isSelected ? symbols.pointer : " "}{" "}
             </Text>
           )}
           itemComponent={({ isSelected, label }) => (
@@ -285,7 +291,7 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
 
         {selectedModel && (
           <Box marginBottom={1}>
-            <Text color="#8ab4f8">Last used: {selectedModel}</Text>
+            <Text color="#a6adc8">Last used: {selectedModel}</Text>
           </Box>
         )}
 
@@ -294,9 +300,10 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
             items={modelItems}
             initialIndex={initialIndex >= 0 ? initialIndex : 0}
             onSelect={handleModelSelect}
+            limit={listLimit}
             indicatorComponent={({ isSelected }) => (
               <Text color={isSelected ? "#ff6f54" : "#a6adc8"}>
-                {isSelected ? symbols.pointer : " "}
+                {isSelected ? symbols.pointer : " "}{" "}
               </Text>
             )}
             itemComponent={({ isSelected, label }) => (

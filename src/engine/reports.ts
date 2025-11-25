@@ -2,6 +2,18 @@ import fs from "fs-extra";
 import path from "path";
 import { AnalysisResult, FileSuggestion } from "./analysis.js";
 import { getRepoInfo } from "./git.js";
+import { getInsightsConfig } from "./config.js";
+import {
+  analyzeDependencies,
+  DependencyAnalysisResult,
+} from "./dependencies.js";
+import { analyzeCodeAge, CodeAgeResult } from "./codeage.js";
+
+export interface ReportInsights {
+  dependencies?: DependencyAnalysisResult;
+  codeAge?: CodeAgeResult;
+  generatedAt: string;
+}
 
 export interface ChurnReport {
   version: string;
@@ -12,6 +24,7 @@ export interface ChurnReport {
     remote?: string;
   };
   analysis: AnalysisResult;
+  insights?: ReportInsights;
   generatedAt: string;
 }
 
@@ -21,9 +34,11 @@ export async function generateReport(
   cwd: string = process.cwd(),
 ): Promise<ChurnReport> {
   const repoInfo = await getRepoInfo(cwd);
+  const insightsConfig = await getInsightsConfig();
 
+  // Build base report
   const report: ChurnReport = {
-    version: "2.0.0",
+    version: "2.2.0",
     repository: {
       name: repoInfo?.name || path.basename(cwd),
       branch: repoInfo?.branch || "unknown",
@@ -34,10 +49,36 @@ export async function generateReport(
     generatedAt: new Date().toISOString(),
   };
 
+  // Run insights analyses in parallel if enabled
+  const shouldRunDeps = insightsConfig.enableDependencyAnalysis;
+  const shouldRunAge = insightsConfig.enableCodeAgeMetrics;
+
+  if (shouldRunDeps || shouldRunAge) {
+    const [depsResult, ageResult] = await Promise.all([
+      shouldRunDeps ? analyzeDependencies(cwd) : Promise.resolve(null),
+      shouldRunAge
+        ? analyzeCodeAge(cwd, insightsConfig)
+        : Promise.resolve(null),
+    ]);
+
+    // Only add insights if at least one analysis succeeded
+    if (depsResult || ageResult) {
+      report.insights = {
+        dependencies: depsResult || undefined,
+        codeAge: ageResult || undefined,
+        generatedAt: new Date().toISOString(),
+      };
+    }
+  }
+
   return report;
 }
 
-// Save report to .churn/reports/churn-reports.json
+// Report retention settings
+const REPORT_MAX_AGE_DAYS = 30;
+const REPORT_MAX_COUNT = 20;
+
+// Save report to .churn/reports/ with timestamp
 export async function saveReport(
   report: ChurnReport,
   cwd: string = process.cwd(),
@@ -45,23 +86,101 @@ export async function saveReport(
   const reportsDir = path.join(cwd, ".churn", "reports");
   await fs.ensureDir(reportsDir);
 
-  const reportPath = path.join(reportsDir, "churn-reports.json");
+  // Create timestamped filename
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const reportPath = path.join(reportsDir, `report-${timestamp}.json`);
   await fs.writeJSON(reportPath, report, { spaces: 2 });
 
+  // Also save as latest for quick access
+  const latestPath = path.join(reportsDir, "latest.json");
+  await fs.writeJSON(latestPath, report, { spaces: 2 });
+
+  // Clean up old reports
+  await cleanupOldReports(reportsDir);
+
   return reportPath;
+}
+
+// Clean up old reports based on age and count
+async function cleanupOldReports(reportsDir: string): Promise<void> {
+  try {
+    const files = await fs.readdir(reportsDir);
+    const reportFiles = files
+      .filter((f) => f.startsWith("report-") && f.endsWith(".json"))
+      .sort()
+      .reverse(); // newest first
+
+    const now = Date.now();
+    const maxAge = REPORT_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+
+    for (let i = 0; i < reportFiles.length; i++) {
+      const filePath = path.join(reportsDir, reportFiles[i]);
+      const stats = await fs.stat(filePath);
+      const age = now - stats.mtimeMs;
+
+      // Delete if over max count OR over max age
+      if (i >= REPORT_MAX_COUNT || age > maxAge) {
+        await fs.remove(filePath);
+      }
+    }
+  } catch (error) {
+    // Silently ignore cleanup errors
+  }
 }
 
 // Load the last report
 export async function loadLastReport(
   cwd: string = process.cwd(),
 ): Promise<ChurnReport | null> {
-  const reportPath = path.join(cwd, ".churn", "reports", "churn-reports.json");
+  const latestPath = path.join(cwd, ".churn", "reports", "latest.json");
 
-  if (await fs.pathExists(reportPath)) {
-    return await fs.readJSON(reportPath);
+  if (await fs.pathExists(latestPath)) {
+    return await fs.readJSON(latestPath);
+  }
+
+  // Fallback to old path for backwards compatibility
+  const oldPath = path.join(cwd, ".churn", "reports", "churn-reports.json");
+  if (await fs.pathExists(oldPath)) {
+    return await fs.readJSON(oldPath);
   }
 
   return null;
+}
+
+// Load all reports (for history view)
+export async function loadAllReports(
+  cwd: string = process.cwd(),
+): Promise<{ path: string; report: ChurnReport; date: Date }[]> {
+  const reportsDir = path.join(cwd, ".churn", "reports");
+
+  if (!(await fs.pathExists(reportsDir))) {
+    return [];
+  }
+
+  const files = await fs.readdir(reportsDir);
+  const reportFiles = files
+    .filter((f) => f.startsWith("report-") && f.endsWith(".json"))
+    .sort()
+    .reverse();
+
+  const reports: { path: string; report: ChurnReport; date: Date }[] = [];
+
+  for (const file of reportFiles) {
+    try {
+      const filePath = path.join(reportsDir, file);
+      const report = await fs.readJSON(filePath);
+      const stats = await fs.stat(filePath);
+      reports.push({
+        path: filePath,
+        report,
+        date: stats.mtime,
+      });
+    } catch {
+      // Skip corrupted files
+    }
+  }
+
+  return reports;
 }
 
 // Export suggestions to a specific file
@@ -69,17 +188,21 @@ export async function exportSuggestions(
   suggestions: FileSuggestion[],
   format: "json" | "markdown",
   outputPath: string,
+  insights?: ReportInsights,
 ): Promise<void> {
   if (format === "json") {
     await fs.writeJSON(outputPath, suggestions, { spaces: 2 });
   } else {
-    const markdown = generateMarkdownReport(suggestions);
+    const markdown = generateMarkdownReport(suggestions, insights);
     await fs.writeFile(outputPath, markdown, "utf-8");
   }
 }
 
 // Generate markdown report
-function generateMarkdownReport(suggestions: FileSuggestion[]): string {
+function generateMarkdownReport(
+  suggestions: FileSuggestion[],
+  insights?: ReportInsights,
+): string {
   let md = "# Churn Analysis Report\n\n";
   md += `Generated: ${new Date().toISOString()}\n\n`;
   md += `Total Suggestions: ${suggestions.length}\n\n`;
@@ -111,6 +234,108 @@ function generateMarkdownReport(suggestions: FileSuggestion[]): string {
 
       md += "---\n\n";
     }
+  }
+
+  // Add insights sections
+  if (insights) {
+    if (insights.dependencies) {
+      md += generateDependencySection(insights.dependencies);
+    }
+    if (insights.codeAge) {
+      md += generateCodeAgeSection(insights.codeAge);
+    }
+  }
+
+  return md;
+}
+
+// Generate dependency analysis markdown section
+function generateDependencySection(deps: DependencyAnalysisResult): string {
+  let md = "\n---\n\n## Dependency Analysis\n\n";
+
+  md += "### Summary\n\n";
+  md += `- **Total Declared**: ${deps.summary.totalDeclared}\n`;
+  md += `- **Used**: ${deps.summary.totalUsed}\n`;
+  md += `- **Unused**: ${deps.summary.totalUnused}\n`;
+  md += `- **Dev Dependencies**: ${deps.summary.totalDevDependencies}\n\n`;
+
+  if (deps.declaredUnused.length > 0) {
+    md += "### Potentially Unused Dependencies\n\n";
+    md +=
+      "These dependencies are declared in package.json but no imports were found:\n\n";
+    for (const dep of deps.declaredUnused.slice(0, 20)) {
+      md += `- \`${dep}\`\n`;
+    }
+    if (deps.declaredUnused.length > 20) {
+      md += `- ... and ${deps.declaredUnused.length - 20} more\n`;
+    }
+    md += "\n";
+  }
+
+  const missingDeps = deps.importedNotDeclared.filter(
+    (i) => i.likely === "missing",
+  );
+  if (missingDeps.length > 0) {
+    md += "### Missing Dependencies\n\n";
+    md += "These imports were found but not declared in package.json:\n\n";
+    for (const item of missingDeps.slice(0, 10)) {
+      md += `- \`${item.import}\` (used in ${item.files.length} file${item.files.length > 1 ? "s" : ""})\n`;
+    }
+    if (missingDeps.length > 10) {
+      md += `- ... and ${missingDeps.length - 10} more\n`;
+    }
+    md += "\n";
+  }
+
+  if (deps.used.length > 0) {
+    md += "### Most Used Dependencies\n\n";
+    for (const dep of deps.used.slice(0, 10)) {
+      md += `- \`${dep.name}\` - ${dep.importCount} import${dep.importCount > 1 ? "s" : ""}\n`;
+    }
+    md += "\n";
+  }
+
+  return md;
+}
+
+// Generate code age metrics markdown section
+function generateCodeAgeSection(age: CodeAgeResult): string {
+  let md = "\n---\n\n## Code Age Metrics\n\n";
+
+  md += "### Summary\n\n";
+  md += `- **Average Code Age**: ${age.summary.avgCodeAgeDays} days\n`;
+  md += `- **Oldest File**: ${age.summary.oldestFileDays} days\n`;
+  md += `- **Newest File**: ${age.summary.newestFileDays} days\n`;
+  md += `- **Orphaned Files**: ${age.summary.orphanedFileCount}\n\n`;
+
+  if (age.hotZones.length > 0) {
+    md += "### Hot Zones (Active Development)\n\n";
+    md += "Directories with recent activity:\n\n";
+    for (const zone of age.hotZones) {
+      md += `- \`${zone.path}\` - ${zone.fileCount} file${zone.fileCount > 1 ? "s" : ""}, ${zone.recentCommitCount} recent commit${zone.recentCommitCount > 1 ? "s" : ""}, avg ${zone.avgAgeDays} days\n`;
+    }
+    md += "\n";
+  }
+
+  if (age.coldZones.length > 0) {
+    md += "### Cold Zones (Potentially Stale)\n\n";
+    md += "Directories with no recent activity:\n\n";
+    for (const zone of age.coldZones) {
+      md += `- \`${zone.path}\` - ${zone.fileCount} file${zone.fileCount > 1 ? "s" : ""}, avg ${zone.avgAgeDays} days old\n`;
+    }
+    md += "\n";
+  }
+
+  if (age.orphanedFiles.length > 0) {
+    md += "### Potentially Orphaned Files\n\n";
+    md += "Files that are old and not imported anywhere:\n\n";
+    for (const file of age.orphanedFiles.slice(0, 10)) {
+      md += `- \`${file.path}\` - ${file.ageDays} days old\n`;
+    }
+    if (age.orphanedFiles.length > 10) {
+      md += `- ... and ${age.orphanedFiles.length - 10} more\n`;
+    }
+    md += "\n";
   }
 
   return md;

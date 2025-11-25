@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.8] - 2025-11-24
+
+### Added
+- **Fullscreen TUI Mode:** Complete UI overhaul using `fullscreen-ink` for immersive terminal experience
+  - All components now render in fullscreen with proper centering and responsive layouts
+  - Uses `FullScreenBox` and `useScreenSize` for adaptive viewport management
+- **VirtualizedList Component:** New reusable windowed list renderer for large datasets
+  - Keyboard navigation (up/down arrows, page up/down)
+  - Configurable viewport size based on terminal height
+  - Smooth scrolling with position indicators
+- **Collapsible Summary in ReviewPanel:** Press 'S' to toggle summary panel visibility
+  - Shows severity breakdown (Critical, High, Medium, Low)
+  - Shows category breakdown (Security, Performance, etc.)
+  - Saves vertical space when collapsed
+- **Timestamped Reports System:** Reports now saved with timestamps for history tracking
+  - Format: `report-{timestamp}.json` (e.g., `report-2025-11-24T10-30-00.json`)
+  - `latest.json` symlink always points to most recent report
+  - Auto-cleanup: 30-day retention, max 20 reports
+  - `loadAllReports()` function for accessing report history
+
+### Changed
+- **RunConsole Redesign:** Centered layout with bordered panels
+  - Rounded borders with theme-consistent colors
+  - Dot-leader stat formatting ("Files Analyzed ... 42")
+  - Section dividers using box-drawing characters
+  - Clean progress bar with percentage display
+- **Theme Consistency:** Removed all blue colors from UI
+  - Reverted from `@inkjs/ui` Select to `ink-select-input` for custom theming
+  - All focus/highlight colors now use theme primary (#ff5656)
+- **Responsive Layouts:** All TUI components now adapt to terminal size
+  - ReviewPanel detail view with text wrapping and truncation
+  - StartMenu and ModelSelect with dynamic widths
+
+### Technical
+- New dependency: `fullscreen-ink` for fullscreen terminal rendering
+- `withFullScreen()` wrapper in index.tsx for app initialization
+- `VirtualizedList.tsx` - Reusable component for large lists
+- Report retention managed by `cleanupOldReports()` in reports.ts
+
 ## [2.1.7] - 2025-01-23
 
 ### Added

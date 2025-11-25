@@ -161,7 +161,7 @@ export function HandoffSettings({
   if (loading) {
     return (
       <Box flexDirection="column" paddingY={1}>
-        <Text color={colors.info}>Loading settings...</Text>
+        <Text color={colors.primary}>Loading settings...</Text>
       </Box>
     );
   }
