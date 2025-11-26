@@ -13,6 +13,7 @@ Open-source • Local-first • Use as-is
 [![Made with Bun](https://img.shields.io/badge/Made%20with-Bun-ff5656?style=flat-square&logo=bun)](https://bun.sh)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-ff5656?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-ff5656.svg?style=flat-square)](https://github.com/cloudboyjh1/churn2.0/pulls)
+[![Docs](https://img.shields.io/badge/Docs-churn--docs-ff5656?style=flat-square)](https://churn-docs.pages.dev/)
 
 </div>
 
@@ -472,6 +473,8 @@ Keys are stored in `~/.churn/config.json` and never sent anywhere except the res
 ---
 
 ## Documentation
+
+**Full Documentation:** [churn-docs.pages.dev](https://churn-docs.pages.dev/)
 
 ### Guides
 - [Agent Handoff Guide](./docs/guides/AGENT_HANDOFF.md) - Complete guide to integrating with AI coding agents
