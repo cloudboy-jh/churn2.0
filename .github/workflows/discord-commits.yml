@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Send Discord Notification
         env:
-          DISCORD_WEBHOOK: "https://discord.com/api/webhooks/1437635244135022653/2kOy_rH3-gm0zlz_r017IrMe6zQRrQhus5-xxVF6vJuEdLIYxfO6cRpCkkDTBVfS0KO3"
+          DISCORD_WEBHOOK: "https://discord.com/api/webhooks/1442982398756257914/QFnEGwYxqWW5cYNzaY9O489U2unJWpfUpagSPUo2NEq-mWa0E1OMu75-9SkIo5n1dARN"
         run: |
           # Extract commit information
           COMMIT_MSG=$(echo '${{ github.event.head_commit.message }}' | head -n 1)
