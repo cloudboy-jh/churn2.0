@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Text, Box, useInput } from "ink";
 import Spinner from "ink-spinner";
 import { useScreenSize } from "fullscreen-ink";
@@ -26,6 +26,35 @@ interface RunConsoleProps {
   concurrency?: number;
 }
 
+// Max files to show per folder group
+const MAX_FILES_PER_GROUP = 5;
+
+interface FolderGroup {
+  folder: string;
+  files: string[];
+}
+
+// Group files by their parent folder
+function groupFilesByFolder(files: string[]): FolderGroup[] {
+  const groups = new Map<string, string[]>();
+
+  for (const file of files) {
+    const lastSlash = file.lastIndexOf("/");
+    const folder = lastSlash > 0 ? file.substring(0, lastSlash) : ".";
+    const fileName = lastSlash > 0 ? file.substring(lastSlash + 1) : file;
+
+    if (!groups.has(folder)) {
+      groups.set(folder, []);
+    }
+    groups.get(folder)!.push(fileName);
+  }
+
+  return Array.from(groups.entries()).map(([folder, files]) => ({
+    folder,
+    files,
+  }));
+}
+
 // Helper for dot-leader formatting (label ... value)
 function formatStat(label: string, value: string, width: number): string {
   const dots = width - label.length - value.length - 2;
@@ -51,6 +80,10 @@ export function RunConsole({
   const [waitingForConfirmation, setWaitingForConfirmation] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [generatingInsights, setGeneratingInsights] = useState(false);
+
+  // Folder groups for display
+  const [folderGroups, setFolderGroups] = useState<FolderGroup[]>([]);
+  const lastBatchRef = useRef<string[]>([]);
 
   // Calculate content width
   const contentWidth = Math.min(55, terminalWidth - 10);
@@ -105,6 +138,18 @@ export function RunConsole({
 
     runAnalysisProcess();
   }, [hasStarted, context, modelConfig, concurrency]);
+
+  // Group files by folder when batch changes
+  useEffect(() => {
+    const currentBatch = progress.currentBatch || [];
+
+    // Update when batch changes
+    if (JSON.stringify(currentBatch) !== JSON.stringify(lastBatchRef.current)) {
+      lastBatchRef.current = currentBatch;
+      const groups = groupFilesByFolder(currentBatch);
+      setFolderGroups(groups);
+    }
+  }, [progress.currentBatch]);
 
   // Calculate how many batch items to show based on terminal height
   const maxBatchItems = Math.max(2, Math.min(5, terminalHeight - 22));
@@ -184,34 +229,63 @@ export function RunConsole({
             </Box>
           )}
 
-          {/* Currently analyzing */}
-          {progress.currentBatch &&
-            progress.currentBatch.length > 0 &&
-            progress.phase !== "complete" && (
-              <Box flexDirection="column" marginBottom={1}>
-                <Box marginBottom={1}>
-                  <Text color={colors.gray}>Currently analyzing:</Text>
-                </Box>
-                {progress.currentBatch
-                  .slice(0, maxBatchItems)
-                  .map((file, i) => (
-                    <Box key={i} paddingLeft={1}>
-                      <Text color={colors.gray}>{symbols.bullet} </Text>
-                      <Text color={colors.text}>
-                        {truncatePath(file, innerWidth - 4)}
-                      </Text>
-                    </Box>
-                  ))}
-                {progress.currentBatch.length > maxBatchItems && (
-                  <Box paddingLeft={1}>
-                    <Text color={colors.gray}>
-                      {symbols.bullet} +
-                      {progress.currentBatch.length - maxBatchItems} more
-                    </Text>
-                  </Box>
-                )}
+          {/* Currently analyzing - all folder groups stacked */}
+          {folderGroups.length > 0 && progress.phase !== "complete" && (
+            <Box flexDirection="column" marginBottom={1}>
+              {/* Divider */}
+              <Box marginX={-1} marginBottom={1}>
+                <Text color={colors.gray}>{divider}</Text>
               </Box>
-            )}
+
+              {/* All folder groups */}
+              {folderGroups.slice(0, 3).map((group, groupIndex) => (
+                <Box
+                  key={group.folder}
+                  flexDirection="column"
+                  marginBottom={groupIndex < folderGroups.length - 1 ? 1 : 0}
+                >
+                  {/* Folder header */}
+                  <Box marginBottom={0}>
+                    <Text color={colors.primary} bold>
+                      {truncatePath(group.folder, innerWidth - 8)}
+                    </Text>
+                    <Text color={colors.gray}> ({group.files.length})</Text>
+                  </Box>
+
+                  {/* Files in folder */}
+                  <Box flexDirection="column" paddingLeft={1}>
+                    {group.files
+                      .slice(0, MAX_FILES_PER_GROUP)
+                      .map((file, i) => (
+                        <Box key={i}>
+                          <Text color={colors.gray}>{symbols.bullet} </Text>
+                          <Text color={colors.text}>
+                            {truncatePath(file, innerWidth - 6)}
+                          </Text>
+                        </Box>
+                      ))}
+                    {group.files.length > MAX_FILES_PER_GROUP && (
+                      <Box>
+                        <Text color={colors.gray} dimColor>
+                          {symbols.bullet} +
+                          {group.files.length - MAX_FILES_PER_GROUP} more
+                        </Text>
+                      </Box>
+                    )}
+                  </Box>
+                </Box>
+              ))}
+
+              {/* Show if more folder groups exist */}
+              {folderGroups.length > 3 && (
+                <Box marginTop={1}>
+                  <Text color={colors.gray} dimColor>
+                    +{folderGroups.length - 3} more folders...
+                  </Text>
+                </Box>
+              )}
+            </Box>
+          )}
 
           {/* Timing stats */}
           <Box justifyContent="center">

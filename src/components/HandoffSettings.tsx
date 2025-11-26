@@ -27,9 +27,9 @@ const AGENTS: Array<{ value: AgentType; label: string; description: string }> =
       description: "Anthropic's Claude Code CLI",
     },
     {
-      value: "cursor",
-      label: "Cursor",
-      description: "Cursor AI editor",
+      value: "droid",
+      label: "Droid",
+      description: "Factory AI's Droid CLI",
     },
     {
       value: "gemini",
@@ -40,6 +40,11 @@ const AGENTS: Array<{ value: AgentType; label: string; description: string }> =
       value: "codex",
       label: "Codex",
       description: "OpenAI Codex CLI",
+    },
+    {
+      value: "cursor",
+      label: "Cursor",
+      description: "Cursor AI editor",
     },
   ];
 

@@ -84,14 +84,9 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
     index,
   }));
 
-  // Handle global and view-specific inputs
+  // Handle view-specific inputs (global shortcuts like z, o, esc are handled by parent)
   useInput(
     (input, key) => {
-      // Global shortcuts
-      if (input === "z") {
-        process.exit(0);
-      }
-
       // Handle zero suggestions case - any key exits
       if (suggestions.length === 0) {
         onComplete([]);
@@ -321,49 +316,66 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
   // Detail view - with proper width constraints
   const wrappedDescription = wrapText(
     currentSuggestion.description,
-    contentWidth - 4,
+    contentWidth - 6,
   );
   const wrappedSuggestion = wrapText(
     currentSuggestion.suggestion,
-    contentWidth - 6,
+    contentWidth - 8,
   );
 
   return (
-    <Box flexDirection="column" paddingY={1} width={contentWidth}>
+    <Box flexDirection="column" paddingY={1}>
+      {/* Header with file info */}
       <Box marginBottom={1}>
         <Text color="#f2e9e4" bold>
-          {truncateText(currentSuggestion.file, contentWidth - 15)} (
-          {currentIndex + 1}/{suggestions.length})
+          {truncateText(currentSuggestion.file, contentWidth - 20)}
+        </Text>
+        <Text color="#a6adc8">
+          {" "}
+          ({currentIndex + 1}/{suggestions.length})
         </Text>
       </Box>
 
+      {/* Main card container */}
       <Box
         flexDirection="column"
-        marginBottom={1}
-        paddingY={1}
         borderStyle="single"
         borderColor="#ff9b85"
-        width={contentWidth}
+        paddingX={1}
+        paddingY={1}
       >
         {/* Title */}
-        <Box paddingX={1} marginBottom={1}>
-          <Text color="#ff6f54" bold wrap="truncate">
-            {truncateText(currentSuggestion.title, contentWidth - 4)}
+        <Box marginBottom={1}>
+          <Text color="#ff6f54" bold>
+            {truncateText(currentSuggestion.title, contentWidth - 6)}
           </Text>
         </Box>
 
         {/* Category & Severity */}
-        <Box paddingX={1} marginBottom={1}>
+        <Box marginBottom={1}>
           <Text color="#a6adc8">Category: </Text>
           <Text color="#f2e9e4">{currentSuggestion.category}</Text>
           <Text color="#a6adc8"> • Severity: </Text>
           <Text color={getSeverityColor(currentSuggestion.severity)}>
             {currentSuggestion.severity}
           </Text>
+          <Text color="#a6adc8"> • </Text>
+          <Text
+            color={
+              acceptedSuggestions.has(currentIndex) ? "#a6e3a1" : "#a6adc8"
+            }
+          >
+            {acceptedSuggestions.has(currentIndex)
+              ? `${symbols.tick} Accepted`
+              : "Not accepted"}
+          </Text>
         </Box>
 
-        {/* Description - wrapped */}
-        <Box flexDirection="column" paddingX={1} marginBottom={1}>
+        {/* Description */}
+        <Box flexDirection="column" marginBottom={1}>
+          <Text color="#a6adc8" dimColor>
+            Description:
+          </Text>
           {wrappedDescription.map((line, i) => (
             <Text key={i} color="#f2e9e4">
               {line}
@@ -371,11 +383,11 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
           ))}
         </Box>
 
-        {/* Suggestion - wrapped */}
-        <Box paddingX={1}>
-          <Text color="#a6adc8">Suggestion:</Text>
-        </Box>
-        <Box flexDirection="column" paddingX={2} marginBottom={1}>
+        {/* Suggestion */}
+        <Box flexDirection="column" marginBottom={1}>
+          <Text color="#a6adc8" dimColor>
+            Suggestion:
+          </Text>
           {wrappedSuggestion.map((line, i) => (
             <Text key={i} color="#f2e9e4">
               {line}
@@ -383,50 +395,55 @@ export function ReviewPanel({ result, onComplete }: ReviewPanelProps) {
           ))}
         </Box>
 
-        {/* Code blocks - truncated */}
+        {/* Code blocks */}
         {currentSuggestion.code && (
-          <Box flexDirection="column" paddingX={1}>
-            <Box marginBottom={1}>
-              <Text color="#f38ba8">Before:</Text>
-            </Box>
-            <Box paddingX={1} marginBottom={1}>
-              <Text color="#a6adc8">
-                {truncateCode(
-                  currentSuggestion.code.before,
-                  codeMaxLines,
-                  contentWidth - 6,
-                )}
+          <Box flexDirection="column">
+            {/* Before block */}
+            <Box flexDirection="column" marginBottom={1}>
+              <Text color="#f38ba8" bold>
+                Before:
               </Text>
+              <Box
+                borderStyle="single"
+                borderColor="#f38ba8"
+                paddingX={1}
+                marginTop={1}
+              >
+                <Text color="#a6adc8">
+                  {truncateCode(
+                    currentSuggestion.code.before,
+                    codeMaxLines,
+                    contentWidth - 10,
+                  )}
+                </Text>
+              </Box>
             </Box>
 
-            <Box marginBottom={1}>
-              <Text color="#a6e3a1">After:</Text>
-            </Box>
-            <Box paddingX={1}>
-              <Text color="#a6e3a1">
-                {truncateCode(
-                  currentSuggestion.code.after,
-                  codeMaxLines,
-                  contentWidth - 6,
-                )}
+            {/* After block */}
+            <Box flexDirection="column">
+              <Text color="#a6e3a1" bold>
+                After:
               </Text>
+              <Box
+                borderStyle="single"
+                borderColor="#a6e3a1"
+                paddingX={1}
+                marginTop={1}
+              >
+                <Text color="#a6e3a1">
+                  {truncateCode(
+                    currentSuggestion.code.after,
+                    codeMaxLines,
+                    contentWidth - 10,
+                  )}
+                </Text>
+              </Box>
             </Box>
           </Box>
         )}
       </Box>
 
-      {/* Status */}
-      <Box marginTop={1}>
-        <Text
-          color={acceptedSuggestions.has(currentIndex) ? "#a6e3a1" : "#a6adc8"}
-        >
-          {acceptedSuggestions.has(currentIndex)
-            ? `${symbols.tick} Accepted`
-            : "Not accepted"}
-        </Text>
-      </Box>
-
-      {/* Actions */}
+      {/* Navigation help */}
       <Box marginTop={1}>
         <Text color="#a6adc8">Space Toggle • Esc/Q Back to list</Text>
       </Box>

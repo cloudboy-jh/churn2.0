@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.9] - 2025-11-25
+
+### Added
+- **Droid Agent Support:** Added Factory AI's Droid CLI as a handoff target
+  - New `DroidAdapter` in handoff engine
+  - Droid option in HandoffSettings UI
+  - Order: claude, droid, gemini, codex, cursor
+
+### Changed
+- **ReviewPanel Detail View:** Improved card layout with nested bordered code blocks
+  - Before/After code sections have their own color-coded borders
+  - Status moved inline with category/severity
+  - Fixed content overflow issues
+- **RunConsole File Display:** Files now grouped by folder in stacked display
+  - Shows up to 3 folder groups at once
+  - Up to 5 files per folder with "+N more" indicator
+  - No cycling animation - updates naturally as analysis progresses
+- **Global Footer:** Hidden during review phase (ReviewPanel has its own navigation)
+
+### Fixed
+- Duplicate footer display during review phase
+- Redundant keyboard handler for 'z' exit in ReviewPanel
+
 ## [2.1.8] - 2025-11-24
 
 ### Added

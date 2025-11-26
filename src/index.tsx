@@ -499,8 +499,8 @@ function App({
           </Box>
         )}
 
-        {/* Keyboard shortcuts footer (show on most phases) */}
-        {phase !== "complete" && phase !== "init" && (
+        {/* Keyboard shortcuts footer (show on most phases, but not review which has its own) */}
+        {phase !== "complete" && phase !== "init" && phase !== "review" && (
           <Box marginTop={1}>
             <Text color="#a6adc8" dimColor>
               {phase !== "start" && "esc (back) · "}

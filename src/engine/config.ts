@@ -2,7 +2,13 @@ import fs from "fs-extra";
 import path from "path";
 import os from "os";
 
-export type AgentType = "claude" | "cursor" | "gemini" | "codex" | "none";
+export type AgentType =
+  | "claude"
+  | "droid"
+  | "gemini"
+  | "codex"
+  | "cursor"
+  | "none";
 export type ContextFormat = "minimal" | "comprehensive";
 
 export interface InsightsConfig {
@@ -332,9 +338,10 @@ function getDefaultHandoffConfig(): HandoffConfig {
     autoLaunch: true,
     agentCommands: {
       claude: "claude",
-      cursor: "cursor",
+      droid: "droid",
       gemini: "gemini",
       codex: "codex",
+      cursor: "cursor",
       none: "",
     },
   };

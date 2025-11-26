@@ -65,13 +65,27 @@ class CodexAdapter implements AgentAdapter {
   }
 }
 
+// Droid Adapter (Factory AI)
+class DroidAdapter implements AgentAdapter {
+  buildCommand(files: string[], cwd: string): string {
+    // Droid is interactive and doesn't accept file args at startup
+    // Launch in the project directory - user references .churn/patches/ manually
+    return `cd "${cwd}" && droid`;
+  }
+
+  getStartupPrompt(): string {
+    return "Review the Churn analysis in .churn/patches/ and help implement the suggested changes.";
+  }
+}
+
 // Get adapter for agent type
 function getAgentAdapter(agentType: AgentType): AgentAdapter | null {
   const adapters: Record<AgentType, AgentAdapter | null> = {
     claude: new ClaudeCodeAdapter(),
-    cursor: new CursorAdapter(),
+    droid: new DroidAdapter(),
     gemini: new GeminiAdapter(),
     codex: new CodexAdapter(),
+    cursor: new CursorAdapter(),
     none: null,
   };
 

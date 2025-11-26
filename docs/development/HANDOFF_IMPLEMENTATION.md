@@ -1,14 +1,14 @@
 # Churn Agent Handoff Implementation Summary
 
-**Version:** 2.1.6  
-**Date:** January 23, 2025  
+**Version:** 2.1.6
+**Date:** Nov 23, 2025
 **Status:** Complete
 
 ---
 
 ## Overview
 
-Implemented a comprehensive agent handoff system that allows Churn to seamlessly transfer analysis results to AI coding agents (Claude Code, Cursor, Gemini CLI, Codex) for implementation. The system includes interactive prompts, configurable settings, and both UI and CLI interfaces.
+Implemented a comprehensive agent handoff system that allows Churn to seamlessly transfer analysis results to AI coding agents (Claude Code, Droid, Gemini CLI, Codex, Cursor) for implementation. The system includes interactive prompts, configurable settings, and both UI and CLI interfaces.
 
 ---
 
@@ -27,9 +27,10 @@ Implemented a comprehensive agent handoff system that allows Churn to seamlessly
 
 - **Agent Adapters:** Interface-based system for different agent CLIs
   - `ClaudeCodeAdapter` - Claude Code CLI integration
-  - `CursorAdapter` - Cursor editor CLI integration
+  - `DroidAdapter` - Factory AI Droid CLI integration
   - `GeminiAdapter` - Gemini CLI integration
   - `CodexAdapter` - Codex CLI integration
+  - `CursorAdapter` - Cursor editor CLI integration
 - **Context Packaging:** `createHandoffPackage()` generates timestamped export packages
   - Minimal format: MD report + JSON suggestions
   - Comprehensive format: MD + JSON + patch + metadata
@@ -130,7 +131,7 @@ src/
 
 ### Type Definitions
 ```typescript
-type AgentType = "claude" | "cursor" | "gemini" | "codex" | "none";
+type AgentType = "claude" | "droid" | "gemini" | "codex" | "cursor" | "none";
 type ContextFormat = "minimal" | "comprehensive";
 
 interface HandoffConfig {
@@ -189,9 +190,10 @@ metadata-2025-01-23T15-30-00-123Z.json
     "autoLaunch": true,
     "agentCommands": {
       "claude": "claude",
-      "cursor": "cursor",
+      "droid": "droid",
       "gemini": "gemini",
       "codex": "codex",
+      "cursor": "cursor",
       "none": ""
     }
   }
@@ -296,7 +298,7 @@ The analysis results will be passed to {agent} for implementation.
 ## Future Enhancements
 
 Potential improvements for future versions:
-- Add more agents (Aider, Continue.dev, etc.)
+- Add more agents (Aider, Continue.dev, Windsurf, etc.)
 - Support custom agent startup prompts
 - Allow filtering handoff by category/severity
 - Add agent-specific formatters
@@ -345,7 +347,7 @@ The handoff system is successful if:
 
 ---
 
-**Implementation Status:** Complete  
-**Documentation Status:** Complete  
-**Testing Status:** Type-checked, ready for user testing  
+**Implementation Status:** Complete
+**Documentation Status:** Complete
+**Testing Status:** Type-checked, ready for user testing
 **Next Steps:** User feedback and iteration
