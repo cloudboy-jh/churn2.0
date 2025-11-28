@@ -2,11 +2,22 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Ollama } from "ollama";
-import { getApiKey } from "./config.js";
+import { getApiKey, getModelsCache, saveModelsCache, getUserModelsOverride } from "./config.js";
 import * as https from "https";
 import * as http from "http";
 
 export type ModelProvider = "anthropic" | "openai" | "google" | "ollama";
+
+export interface ModelsManifest {
+  version: string;
+  updated: string;
+  models: {
+    anthropic: string[];
+    openai: string[];
+    google: string[];
+    ollama: string[];
+  };
+}
 
 export interface ModelConfig {
   provider: ModelProvider;
@@ -38,29 +49,97 @@ export const DEFAULT_TIMEOUTS = {
   ollama: 30000, // 30 seconds for local Ollama
 } as const;
 
-export const AVAILABLE_MODELS = {
+// Hardcoded fallback models (used when offline or remote fetch fails)
+export const FALLBACK_MODELS = {
   anthropic: [
     "claude-sonnet-4-5",
-    "claude-opus-4-1",
+    "claude-opus-4-5",
     "claude-haiku-4-5",
     "claude-sonnet-4",
   ],
-  openai: ["gpt-5", "gpt-5-mini", "gpt-5-nano", "gpt-5-pro"],
+  openai: [
+    "gpt-4o",
+    "gpt-4o-mini",
+    "gpt-4-turbo",
+    "o1",
+    "o1-mini",
+    "o1-preview",
+  ],
   google: [
-    "gemini-2-5-pro",
-    "gemini-2-5-flash",
-    "gemini-2-5-flash-lite",
-    "gemini-2-0-flash",
+    "gemini-2.0-flash-exp",
+    "gemini-1.5-pro",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-8b",
   ],
   ollama: [
     "deepseek-r1:latest",
     "qwen2.5-coder:14b",
     "llama3.3:70b",
-    "phi-3-mini",
+    "llama3.2:latest",
     "codellama:13b",
     "mistral:7b",
+    "phi-3:latest",
   ],
 } as const;
+
+// Keep AVAILABLE_MODELS as alias for backward compatibility
+export const AVAILABLE_MODELS = FALLBACK_MODELS;
+
+const REMOTE_MANIFEST_URL = "https://raw.githubusercontent.com/cloudboyjh1/churn2.0/master/models-manifest.json";
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+// Fetch models from remote manifest
+async function fetchRemoteModels(): Promise<ModelsManifest | null> {
+  try {
+    const response = await fetch(REMOTE_MANIFEST_URL, { 
+      signal: AbortSignal.timeout(5000) // 5 second timeout
+    });
+    if (!response.ok) return null;
+    return await response.json() as ModelsManifest;
+  } catch {
+    return null;
+  }
+}
+
+// Get models with priority chain: user override > cached > remote > fallback
+export async function getModels(): Promise<ModelsManifest["models"]> {
+  // 1. Check for user override (~/.churn/models.json)
+  const userOverride = await getUserModelsOverride();
+  if (userOverride) {
+    return userOverride.models;
+  }
+
+  // 2. Check cache
+  const cache = await getModelsCache();
+  const now = Date.now();
+  
+  if (cache && cache.timestamp && (now - cache.timestamp) < CACHE_TTL_MS) {
+    return cache.models;
+  }
+
+  // 3. Try to fetch from remote
+  const remoteManifest = await fetchRemoteModels();
+  if (remoteManifest) {
+    await saveModelsCache({
+      ...remoteManifest,
+      timestamp: now,
+    });
+    return remoteManifest.models;
+  }
+
+  // 4. If we have stale cache, use it
+  if (cache) {
+    return cache.models;
+  }
+
+  // 5. Fall back to hardcoded
+  return {
+    anthropic: [...FALLBACK_MODELS.anthropic],
+    openai: [...FALLBACK_MODELS.openai],
+    google: [...FALLBACK_MODELS.google],
+    ollama: [...FALLBACK_MODELS.ollama],
+  };
+}
 
 // Get installed Ollama models from local instance
 export async function getInstalledOllamaModels(): Promise<string[]> {

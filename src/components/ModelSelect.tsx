@@ -10,6 +10,7 @@ import {
   AVAILABLE_MODELS,
   ModelConfig,
   getInstalledOllamaModels,
+  getModels,
 } from "../engine/models.js";
 import {
   getDefaultModel,
@@ -41,6 +42,12 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
   );
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [loadingOllama, setLoadingOllama] = useState(false);
+  const [availableModels, setAvailableModels] = useState<{
+    anthropic: string[];
+    openai: string[];
+    google: string[];
+    ollama: string[];
+  } | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -48,6 +55,12 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
 
     async function loadDefaults() {
       try {
+        // Load available models (with remote/cache/fallback chain)
+        const models = await getModels();
+        if (isMounted) {
+          setAvailableModels(models);
+        }
+
         const defaultModel = await getDefaultModel();
         if (isMounted && defaultModel) {
           setSelectedProvider(defaultModel.provider);
@@ -239,11 +252,12 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
   }
 
   if (phase === "model" && selectedProvider) {
-    // For Ollama, use installed models; for others, use static list
+    // For Ollama, use installed models; for others, use loaded models (with fallback)
+    const modelSource = availableModels || AVAILABLE_MODELS;
     const models =
       selectedProvider === "ollama" && ollamaModels.length > 0
         ? ollamaModels
-        : AVAILABLE_MODELS[selectedProvider];
+        : modelSource[selectedProvider];
     const modelItems = models.map((m) => ({ label: m, value: m }));
 
     // Find index of last selected model to pre-select it

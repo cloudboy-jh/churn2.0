@@ -31,6 +31,27 @@ export interface HandoffConfig {
   agentCommands: Record<AgentType, string>;
 }
 
+export interface ModelsCache {
+  version: string;
+  updated: string;
+  timestamp: number;
+  models: {
+    anthropic: string[];
+    openai: string[];
+    google: string[];
+    ollama: string[];
+  };
+}
+
+export interface UserModelsOverride {
+  models: {
+    anthropic: string[];
+    openai: string[];
+    google: string[];
+    ollama: string[];
+  };
+}
+
 export interface ChurnConfig {
   version: string;
   apiKeys?: {
@@ -71,6 +92,8 @@ export interface ProjectConfig {
 
 const CONFIG_DIR = path.join(os.homedir(), ".churn");
 const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
+const MODELS_CACHE_FILE = path.join(CONFIG_DIR, "models-cache.json");
+const USER_MODELS_FILE = path.join(CONFIG_DIR, "models.json");
 const PROJECT_CONFIG_DIR = ".churn";
 const PROJECT_CONFIG_FILE = path.join(PROJECT_CONFIG_DIR, "config.json");
 
@@ -399,4 +422,39 @@ export async function updateInsightsConfig(
   const currentInsights = config.insights || getDefaultInsightsConfig();
   config.insights = { ...currentInsights, ...updates };
   await saveConfig(config);
+}
+
+// Get models cache
+export async function getModelsCache(): Promise<ModelsCache | null> {
+  await ensureConfigDir();
+  try {
+    if (await fs.pathExists(MODELS_CACHE_FILE)) {
+      return await fs.readJSON(MODELS_CACHE_FILE);
+    }
+  } catch {
+    // Ignore read errors
+  }
+  return null;
+}
+
+// Save models cache
+export async function saveModelsCache(cache: ModelsCache): Promise<void> {
+  await ensureConfigDir();
+  try {
+    await fs.writeJSON(MODELS_CACHE_FILE, cache, { spaces: 2 });
+  } catch {
+    // Ignore write errors - cache is not critical
+  }
+}
+
+// Get user models override (~/.churn/models.json)
+export async function getUserModelsOverride(): Promise<UserModelsOverride | null> {
+  try {
+    if (await fs.pathExists(USER_MODELS_FILE)) {
+      return await fs.readJSON(USER_MODELS_FILE);
+    }
+  } catch {
+    // Ignore read errors
+  }
+  return null;
 }
