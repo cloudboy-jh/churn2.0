@@ -19,8 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Updated Model Lists:** Refreshed to latest available models (Nov 2025)
   - Anthropic: claude-sonnet-4-5, claude-opus-4-5, claude-haiku-4-5, claude-sonnet-4
-  - OpenAI: gpt-4o, gpt-4o-mini, gpt-4-turbo, o1, o1-mini, o1-preview
-  - Google: gemini-2.0-flash-exp, gemini-1.5-pro, gemini-1.5-flash, gemini-1.5-flash-8b
+  - OpenAI: gpt-5.1, gpt-5 series
+  - Google: gemini-3-pro, gemini series
   - Ollama: deepseek-r1, qwen2.5-coder, llama3.3, llama3.2, codellama, mistral, phi-3
 
 ## [2.1.9] - 2025-11-25
