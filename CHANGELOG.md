@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.1] - 2025-12-09
+
+### Added
+- **New Review Flow:** Replaced tedious checkbox review with scannable summary + one-decision handoff
+  - **AnalysisSummary screen:** Post-analysis view with severity breakdown (HIGH/MEDIUM/LOW), progress bars, category stats
+  - **ReviewBrowser:** Tree-based finding browser with exclude mode (everything included by default)
+  - **FindingDetail modal:** Extracted detail view for individual findings
+  - **AgentOnboarding:** First-run agent configuration as part of init sequence
+- **Quick Handoff Actions:** [H] Pass HIGH only, [M] Pass HIGH+MED, [A] Pass ALL, [R] Review first, [E] Export only
+- **Theme Enhancements:** Tree chars, checkbox symbols, severity colors (HIGH=#f38ba8, MEDIUM=#f9e2af, LOW=#a6adc8)
+- **Security Category:** Added `security` to FileSuggestion.category union type
+
+### Changed
+- **ExportPanel:** Refactored with `mode` prop (`'handoff'` | `'export-only'`), Y/N/R confirmation flow
+- **StartMenu:** Added `configuredAgent` prop to show agent status indicator
+- **App Flow:** New phases (`onboarding`, `summary`) wired into main routing
+- **First-Run Experience:** Model Selection → Agent Onboarding → Start Menu
+
+### Technical
+- ReviewPanel.tsx kept for backwards compatibility with `churn review` command
+- "Skip" during onboarding marks it complete (won't nag again)
+- Export-only returns to AnalysisSummary (not exit)
+
 ## [2.2.0] - 2025-11-28
 
 ### Added
