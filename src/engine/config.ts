@@ -82,6 +82,8 @@ export interface ChurnConfig {
   };
   handoff?: HandoffConfig;
   insights?: InsightsConfig;
+  // First-run onboarding completion flag
+  onboardingComplete?: boolean;
 }
 
 export interface ProjectConfig {
@@ -457,4 +459,26 @@ export async function getUserModelsOverride(): Promise<UserModelsOverride | null
     // Ignore read errors
   }
   return null;
+}
+
+// Check if agent is configured (not 'none')
+export async function isAgentConfigured(): Promise<boolean> {
+  const config = await loadConfig();
+  return (
+    config.handoff?.targetAgent !== undefined &&
+    config.handoff.targetAgent !== "none"
+  );
+}
+
+// Check if user has completed first-run onboarding
+export async function hasCompletedOnboarding(): Promise<boolean> {
+  const config = await loadConfig();
+  return config.onboardingComplete === true;
+}
+
+// Mark onboarding as complete
+export async function setOnboardingComplete(): Promise<void> {
+  const config = await loadConfig();
+  config.onboardingComplete = true;
+  await saveConfig(config);
 }

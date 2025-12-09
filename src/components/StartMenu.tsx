@@ -3,12 +3,14 @@ import { Box, Text, useInput } from "ink";
 import SelectInput from "ink-select-input";
 import { colors, symbols } from "../theme.js";
 import { Panel } from "./Panel.js";
+import { AgentType } from "../engine/config.js";
 
 interface StartMenuProps {
   onRunScan: () => void;
   onChooseModel: () => void;
   onSettings: () => void;
   onExit: () => void;
+  configuredAgent?: AgentType;
 }
 
 interface MenuOption {
@@ -22,16 +24,25 @@ export function StartMenu({
   onChooseModel,
   onSettings,
   onExit,
+  configuredAgent,
 }: StartMenuProps) {
+  // Build settings label based on configured agent
+  const settingsLabel = useMemo(() => {
+    if (configuredAgent && configuredAgent !== "none") {
+      return `+ Agent settings (${configuredAgent} ${symbols.checkmark})`;
+    }
+    return "+ Agent settings (not configured)";
+  }, [configuredAgent]);
+
   // Memoize options array
   const options = useMemo<MenuOption[]>(
     () => [
       { label: "> Run scan", value: "scan", icon: ">" },
       { label: "* Choose model", value: "model", icon: "*" },
-      { label: "+ Settings", value: "settings", icon: "+" },
+      { label: settingsLabel, value: "settings", icon: "+" },
       { label: "x Exit", value: "exit", icon: "x" },
     ],
-    [],
+    [settingsLabel],
   );
 
   // Global exit shortcut

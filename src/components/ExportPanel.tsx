@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Text, Box, useInput } from "ink";
 import Spinner from "ink-spinner";
 import path from "path";
-import { theme, symbols, colors } from "../theme.js";
+import { symbols, colors } from "../theme.js";
 import { Panel } from "./Panel.js";
 import { FileSuggestion } from "../engine/analysis.js";
 import {
@@ -12,47 +12,105 @@ import {
   ReportInsights,
 } from "../engine/reports.js";
 import { getHandoffConfig, type AgentType } from "../engine/config.js";
+import { isAgentAvailable } from "../engine/handoff.js";
+
+export type ExportMode = "handoff" | "export-only";
 
 interface ExportPanelProps {
   suggestions: FileSuggestion[];
+  mode: ExportMode;
   onComplete: () => void;
   onHandoff?: (agentType: AgentType, files: string[]) => void;
   onConfigureHandoff?: () => void;
+  onBackToSummary?: () => void;
+  onReview?: () => void;
 }
+
+type ExportStatus =
+  | "exporting"
+  | "complete"
+  | "handoff-prompt"
+  | "no-agent"
+  | "agent-unavailable"
+  | "launching";
 
 export function ExportPanel({
   suggestions,
+  mode,
   onComplete,
   onHandoff,
   onConfigureHandoff,
+  onBackToSummary,
+  onReview,
 }: ExportPanelProps) {
-  const [status, setStatus] = useState<
-    "exporting" | "complete" | "handoff-prompt"
-  >("exporting");
+  const [status, setStatus] = useState<ExportStatus>("exporting");
   const [exportedFiles, setExportedFiles] = useState<string[]>([]);
   const [handoffAgent, setHandoffAgent] = useState<AgentType>("none");
-  const [handoffEnabled, setHandoffEnabled] = useState(false);
+  const [agentAvailable, setAgentAvailable] = useState(false);
+  const [autoLaunch, setAutoLaunch] = useState(false);
 
   useEffect(() => {
     performExport();
   }, []);
 
-  // Handle keyboard input for handoff prompt
+  // Handle keyboard input based on status
   useInput((input, key) => {
-    if (status !== "handoff-prompt") return;
+    const lowerInput = input.toLowerCase();
 
-    if (input === "y" || input === "Y") {
-      // User wants to launch agent
-      if (onHandoff && handoffAgent !== "none") {
-        onHandoff(handoffAgent, exportedFiles);
+    if (status === "complete" && mode === "export-only") {
+      // Export-only mode: any key returns to summary
+      if (onBackToSummary) {
+        onBackToSummary();
+      } else {
+        onComplete();
       }
-    } else if (input === "n" || input === "N") {
-      // User declined handoff
-      onComplete();
-    } else if (input === "c" || input === "C") {
-      // User wants to configure
-      if (onConfigureHandoff) {
-        onConfigureHandoff();
+      return;
+    }
+
+    if (status === "handoff-prompt") {
+      if (lowerInput === "y") {
+        // User confirmed - launch agent
+        if (onHandoff && handoffAgent !== "none") {
+          setStatus("launching");
+          onHandoff(handoffAgent, exportedFiles);
+        }
+      } else if (lowerInput === "n") {
+        // User declined - back to summary
+        if (onBackToSummary) {
+          onBackToSummary();
+        } else {
+          onComplete();
+        }
+      } else if (lowerInput === "r") {
+        // User wants to review first
+        if (onReview) {
+          onReview();
+        }
+      }
+    }
+
+    if (status === "no-agent") {
+      if (lowerInput === "c") {
+        // Configure agent
+        if (onConfigureHandoff) {
+          onConfigureHandoff();
+        }
+      } else if (lowerInput === "s") {
+        // Skip - return to summary
+        if (onBackToSummary) {
+          onBackToSummary();
+        } else {
+          onComplete();
+        }
+      }
+    }
+
+    if (status === "agent-unavailable") {
+      // Any key returns to summary
+      if (onBackToSummary) {
+        onBackToSummary();
+      } else {
+        onComplete();
       }
     }
   });
@@ -87,30 +145,49 @@ export function ExportPanel({
     }
 
     setExportedFiles(files);
-    setStatus("complete");
 
     // Check handoff configuration
     const handoffConfig = await getHandoffConfig();
     setHandoffAgent(handoffConfig.targetAgent);
-    setHandoffEnabled(handoffConfig.enabled);
+    setAutoLaunch(handoffConfig.autoLaunch);
 
-    // If handoff is enabled and agent is configured, show prompt
-    if (
-      handoffConfig.enabled &&
-      handoffConfig.autoLaunch &&
-      handoffConfig.targetAgent !== "none"
-    ) {
-      setTimeout(() => setStatus("handoff-prompt"), 1000);
+    // Different flows based on mode
+    if (mode === "export-only") {
+      // Export-only: show files, wait for key press to return
+      setStatus("complete");
     } else {
-      setTimeout(() => onComplete(), 2000);
+      // Handoff mode: check agent configuration
+      if (handoffConfig.targetAgent === "none") {
+        // No agent configured
+        setStatus("no-agent");
+      } else {
+        // Check if agent is available
+        const available = await isAgentAvailable(handoffConfig.targetAgent);
+        setAgentAvailable(available);
+
+        if (!available) {
+          // Agent not available
+          setStatus("agent-unavailable");
+        } else if (handoffConfig.autoLaunch) {
+          // Auto-launch enabled - go directly
+          setStatus("launching");
+          if (onHandoff) {
+            onHandoff(handoffConfig.targetAgent, files);
+          }
+        } else {
+          // Show confirmation prompt
+          setStatus("handoff-prompt");
+        }
+      }
     }
   }
 
+  // Exporting spinner
   if (status === "exporting") {
     return (
       <Box flexDirection="column" paddingY={1}>
         <Box>
-          <Text color="#ff6f54">
+          <Text color={colors.primary}>
             <Spinner type="dots" /> Exporting results...
           </Text>
         </Box>
@@ -118,63 +195,56 @@ export function ExportPanel({
     );
   }
 
-  if (status === "handoff-prompt") {
+  // Launching agent
+  if (status === "launching") {
+    return (
+      <Box flexDirection="column" paddingY={1}>
+        <Box>
+          <Text color={colors.primary}>
+            <Spinner type="dots" /> Launching {handoffAgent}...
+          </Text>
+        </Box>
+      </Box>
+    );
+  }
+
+  // No agent configured
+  if (status === "no-agent") {
     return (
       <Box flexDirection="column" paddingY={1}>
         <Box marginBottom={1}>
-          <Text color="#a6e3a1" bold>
-            {symbols.tick} Export Complete
+          <Text color={colors.success} bold>
+            {symbols.checkmark} Export Complete
           </Text>
         </Box>
 
         <Box flexDirection="column" marginBottom={1}>
           <Box marginBottom={1}>
-            <Text color="#f2e9e4">Exported files:</Text>
+            <Text color={colors.text}>Exported files:</Text>
           </Box>
-
           {exportedFiles.map((file, i) => (
             <Box key={i} paddingLeft={2}>
-              <Text color="#ff6f54">{symbols.bullet} </Text>
-              <Text color="#a6adc8">{path.relative(process.cwd(), file)}</Text>
+              <Text color={colors.primary}>{symbols.bullet} </Text>
+              <Text color={colors.gray}>{path.relative(process.cwd(), file)}</Text>
             </Box>
           ))}
         </Box>
 
         <Box marginTop={1} marginBottom={1}>
-          <Text color="#a6adc8">All files saved to .churn/patches/</Text>
+          <Text color={colors.gray}>All files saved to .churn/patches/</Text>
         </Box>
 
-        <Panel
-          title={`Launch ${handoffAgent} now?`}
-          borderColor={colors.primary}
-        >
+        <Panel title="No agent configured" borderColor={colors.warning}>
           <Box flexDirection="column">
             <Box marginBottom={1}>
-              <Text color="#a6adc8">
-                Analysis results will be passed to {handoffAgent} for
-                implementation.
+              <Text color={colors.gray}>
+                Would you like to configure an agent for automatic handoff?
               </Text>
             </Box>
-
-            <Box
-              paddingTop={1}
-              borderStyle="single"
-              borderTop
-              borderColor={colors.gray}
-            >
-              <Text color="#f2e9e4">
-                <Text color="#a6e3a1" bold>
-                  [Y]
-                </Text>{" "}
-                Yes{" "}
-                <Text color="#f38ba8" bold>
-                  [N]
-                </Text>{" "}
-                No{" "}
-                <Text color="#f9e2af" bold>
-                  [C]
-                </Text>{" "}
-                Configure
+            <Box paddingTop={1} borderStyle="single" borderTop borderColor={colors.gray}>
+              <Text color={colors.text}>
+                <Text color={colors.success} bold>[C]</Text> Configure agent{" "}
+                <Text color={colors.gray} bold>[S]</Text> Skip
               </Text>
             </Box>
           </Box>
@@ -183,29 +253,129 @@ export function ExportPanel({
     );
   }
 
+  // Agent not available
+  if (status === "agent-unavailable") {
+    return (
+      <Box flexDirection="column" paddingY={1}>
+        <Box marginBottom={1}>
+          <Text color={colors.success} bold>
+            {symbols.checkmark} Export Complete
+          </Text>
+        </Box>
+
+        <Box flexDirection="column" marginBottom={1}>
+          <Box marginBottom={1}>
+            <Text color={colors.text}>Exported files:</Text>
+          </Box>
+          {exportedFiles.map((file, i) => (
+            <Box key={i} paddingLeft={2}>
+              <Text color={colors.primary}>{symbols.bullet} </Text>
+              <Text color={colors.gray}>{path.relative(process.cwd(), file)}</Text>
+            </Box>
+          ))}
+        </Box>
+
+        <Box marginTop={1} marginBottom={1}>
+          <Text color={colors.gray}>All files saved to .churn/patches/</Text>
+        </Box>
+
+        <Panel title="Agent not available" borderColor={colors.error}>
+          <Box flexDirection="column">
+            <Box marginBottom={1}>
+              <Text color={colors.gray}>
+                {handoffAgent} was not found in your PATH.
+              </Text>
+            </Box>
+            <Box marginBottom={1}>
+              <Text color={colors.gray}>
+                You can manually run: {handoffAgent} --context .churn/patches/
+              </Text>
+            </Box>
+            <Box paddingTop={1} borderStyle="single" borderTop borderColor={colors.gray}>
+              <Text color={colors.gray}>Press any key to continue...</Text>
+            </Box>
+          </Box>
+        </Panel>
+      </Box>
+    );
+  }
+
+  // Handoff confirmation prompt
+  if (status === "handoff-prompt") {
+    return (
+      <Box flexDirection="column" paddingY={1}>
+        <Box marginBottom={1}>
+          <Text color={colors.success} bold>
+            {symbols.checkmark} Export Complete
+          </Text>
+        </Box>
+
+        <Box flexDirection="column" marginBottom={1}>
+          <Box marginBottom={1}>
+            <Text color={colors.text}>Exported files:</Text>
+          </Box>
+          {exportedFiles.map((file, i) => (
+            <Box key={i} paddingLeft={2}>
+              <Text color={colors.primary}>{symbols.bullet} </Text>
+              <Text color={colors.gray}>{path.relative(process.cwd(), file)}</Text>
+            </Box>
+          ))}
+        </Box>
+
+        <Box marginTop={1} marginBottom={1}>
+          <Text color={colors.gray}>All files saved to .churn/patches/</Text>
+        </Box>
+
+        <Panel
+          title={`Pass ${suggestions.length} findings to ${handoffAgent}?`}
+          borderColor={colors.primary}
+        >
+          <Box flexDirection="column">
+            <Box marginBottom={1}>
+              <Text color={colors.gray}>
+                Analysis results will be passed to {handoffAgent} for implementation.
+              </Text>
+            </Box>
+            <Box paddingTop={1} borderStyle="single" borderTop borderColor={colors.gray}>
+              <Text color={colors.text}>
+                <Text color={colors.success} bold>[Y]</Text> Yes{" "}
+                <Text color={colors.error} bold>[N]</Text> No{" "}
+                <Text color={colors.info} bold>[R]</Text> Review first
+              </Text>
+            </Box>
+          </Box>
+        </Panel>
+      </Box>
+    );
+  }
+
+  // Export complete (export-only mode or fallback)
   return (
     <Box flexDirection="column" paddingY={1}>
       <Box marginBottom={1}>
-        <Text color="#a6e3a1" bold>
-          {symbols.tick} Export Complete
+        <Text color={colors.success} bold>
+          {symbols.checkmark} Export Complete
         </Text>
       </Box>
 
       <Box flexDirection="column" marginBottom={1}>
         <Box marginBottom={1}>
-          <Text color="#f2e9e4">Exported files:</Text>
+          <Text color={colors.text}>Exported files:</Text>
         </Box>
-
         {exportedFiles.map((file, i) => (
           <Box key={i} paddingLeft={2}>
-            <Text color="#ff6f54">{symbols.bullet} </Text>
-            <Text color="#a6adc8">{path.relative(process.cwd(), file)}</Text>
+            <Text color={colors.primary}>{symbols.bullet} </Text>
+            <Text color={colors.gray}>{path.relative(process.cwd(), file)}</Text>
           </Box>
         ))}
       </Box>
 
+      <Box marginTop={1} marginBottom={1}>
+        <Text color={colors.gray}>All files saved to .churn/patches/</Text>
+      </Box>
+
       <Box marginTop={1}>
-        <Text color="#a6adc8">All files saved to .churn/patches/</Text>
+        <Text color={colors.gray}>Press any key to continue...</Text>
       </Box>
     </Box>
   );

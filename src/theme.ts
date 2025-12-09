@@ -65,7 +65,76 @@ export const symbols = {
   arrowDown: "v",
   arrowLeft: "<",
   arrowRight: ">",
+  checkmark: "✓",
 } as const;
+
+// Tree drawing characters for ReviewBrowser
+export const tree = {
+  expanded: "▼",
+  collapsed: "▶",
+  branch: "├─",
+  lastBranch: "└─",
+  vertical: "│ ",
+  indent: "  ",
+} as const;
+
+// Checkbox characters for tree items
+export const checkbox = {
+  checked: "[✓]",
+  unchecked: "[ ]",
+  partial: "[○]",
+} as const;
+
+// Severity colors (per spec)
+export const severityColors = {
+  high: "#f38ba8",   // matches colors.error
+  medium: "#f9e2af", // matches colors.warning
+  low: "#a6adc8",    // matches colors.gray (spec)
+} as const;
+
+// Category label mappings for human-readable display
+const categoryLabelsSingular: Record<string, string> = {
+  bug: "potential bug",
+  security: "security vulnerability",
+  refactor: "refactor opportunity",
+  optimization: "optimization suggestion",
+  documentation: "documentation gap",
+  style: "style inconsistency",
+};
+
+const categoryLabelsPlural: Record<string, string> = {
+  bug: "potential bugs",
+  security: "security vulnerabilities",
+  refactor: "refactor opportunities",
+  optimization: "optimization suggestions",
+  documentation: "documentation gaps",
+  style: "style inconsistencies",
+};
+
+// Get human-readable category label
+export function getCategoryLabel(category: string, count: number): string {
+  const label = count === 1 
+    ? categoryLabelsSingular[category] 
+    : categoryLabelsPlural[category];
+  return label || category;
+}
+
+// Get severity color
+export function getSeverityColor(severity: "high" | "medium" | "low"): string {
+  return severityColors[severity];
+}
+
+// Get severity theme (chalk instance)
+export function getSeverityTheme(severity: "high" | "medium" | "low") {
+  switch (severity) {
+    case "high":
+      return theme.error;
+    case "medium":
+      return theme.warning;
+    case "low":
+      return theme.gray;
+  }
+}
 
 // Create a bordered box
 export function createBox(content: string, title?: string): string {

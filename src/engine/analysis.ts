@@ -40,7 +40,7 @@ export interface AnalysisProgress {
 
 export interface FileSuggestion {
   file: string;
-  category: "refactor" | "bug" | "optimization" | "style" | "documentation";
+  category: "refactor" | "bug" | "security" | "optimization" | "style" | "documentation";
   severity: "low" | "medium" | "high";
   title: string;
   description: string;

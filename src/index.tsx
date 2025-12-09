@@ -9,17 +9,22 @@ import { Logo } from "./components/Logo.js";
 import { ModelSelect } from "./components/ModelSelect.js";
 import { RunConsole } from "./components/RunConsole.js";
 import { ReviewPanel } from "./components/ReviewPanel.js";
-import { ExportPanel } from "./components/ExportPanel.js";
+import { ExportPanel, ExportMode } from "./components/ExportPanel.js";
 import { AskConsole } from "./components/AskConsole.js";
 import { CommandsList } from "./components/CommandsList.js";
 import { ConfirmRun } from "./components/ConfirmRun.js";
 import { StartMenu } from "./components/StartMenu.js";
 import { HandoffSettings } from "./components/HandoffSettings.js";
+import { AgentOnboarding } from "./components/AgentOnboarding.js";
+import { AnalysisSummary } from "./components/AnalysisSummary.js";
+import { ReviewBrowser } from "./components/ReviewBrowser.js";
 import { getRepoInfo, detectProjectType, isGitRepo } from "./engine/git.js";
 import {
   ensureProjectDir,
   isSetupComplete,
   getDefaultModel,
+  getHandoffConfig,
+  hasCompletedOnboarding,
   type AgentType,
 } from "./engine/config.js";
 import { ModelConfig } from "./engine/models.js";
@@ -39,10 +44,12 @@ function renderFullscreen(element: React.ReactElement) {
 
 type AppPhase =
   | "init"
+  | "onboarding"
   | "start"
   | "model"
   | "confirm"
   | "run"
+  | "summary"
   | "review"
   | "export"
   | "handoff-settings"
@@ -88,6 +95,8 @@ function App({
   const [pendingHandoffAgent, setPendingHandoffAgent] =
     useState<AgentType | null>(null);
   const [previousPhase, setPreviousPhase] = useState<AppPhase | null>(null);
+  const [exportMode, setExportMode] = useState<ExportMode>("handoff");
+  const [configuredAgent, setConfiguredAgent] = useState<AgentType>("none");
 
   useEffect(() => {
     initialize();
@@ -132,12 +141,14 @@ function App({
     // Define phase navigation - go back to previous phase
     const phaseFlow: Record<AppPhase, AppPhase | null> = {
       init: null,
+      onboarding: "model",
       start: null,
       model: setupComplete ? "start" : null,
       confirm: "start",
       run: "confirm",
-      review: "run",
-      export: "review",
+      summary: "run",
+      review: "summary",
+      export: "summary",
       "handoff-settings": "start", // Default fallback
       ask: "start",
       "ask-input": "start",
@@ -182,6 +193,13 @@ function App({
     const complete = await isSetupComplete();
     setSetupComplete(complete);
 
+    // Load handoff config for display
+    const handoffConfig = await getHandoffConfig();
+    setConfiguredAgent(handoffConfig.targetAgent);
+
+    // Check onboarding status
+    const onboardingDone = await hasCompletedOnboarding();
+
     // Load current model for display
     if (complete) {
       const defaultModel = await getDefaultModel();
@@ -200,7 +218,16 @@ function App({
     // Route to appropriate phase based on command
     if (command === "start") {
       // Start command shows interactive menu
-      setPhase("start");
+      // But first check if onboarding/model setup is needed
+      if (!complete) {
+        // Need model first
+        setPhase("model");
+      } else if (!onboardingDone) {
+        // Model configured but need agent onboarding
+        setPhase("onboarding");
+      } else {
+        setPhase("start");
+      }
     } else if (command === "model") {
       setPhase("model");
     } else if (command === "ask") {
@@ -248,18 +275,29 @@ function App({
     }
   }
 
-  function handleModelComplete(config: ModelConfig) {
+  async function handleModelComplete(config: ModelConfig) {
     setModelConfig(config);
     setCurrentModelDisplay(`Current model: ${config.provider}/${config.model}`);
+    
+    // Check if onboarding is needed
+    const onboardingDone = await hasCompletedOnboarding();
+    
     if (command === "model") {
       // Stay on model phase to show success, don't exit
       // User can manually exit with Ctrl+C
     } else if (command === "start") {
-      // Return to start menu after model selection
-      setPhase("start");
+      // Check if we need to do agent onboarding first
+      if (!onboardingDone) {
+        setPhase("onboarding");
+      } else {
+        // Return to start menu after model selection
+        setPhase("start");
+      }
     } else if (command === "run") {
-      // After model setup, continue to confirm phase if context is available
-      if (context) {
+      // After model setup, check onboarding then continue
+      if (!onboardingDone) {
+        setPhase("onboarding");
+      } else if (context) {
         setPhase("confirm");
       } else {
         // Stay on model phase, don't exit prematurely
@@ -276,11 +314,56 @@ function App({
 
   function handleRunComplete(result: AnalysisResult) {
     setAnalysisResult(result);
+    setPhase("summary"); // Go to new summary screen instead of review
+  }
+
+  // Handler for onboarding completion
+  function handleOnboardingComplete(agent: AgentType) {
+    setConfiguredAgent(agent);
+    
+    // Continue to appropriate phase based on command
+    if (command === "run" && context) {
+      setPhase("confirm");
+    } else {
+      setPhase("start");
+    }
+  }
+
+  // Handler for passing findings from AnalysisSummary
+  function handlePassFindings(findings: FileSuggestion[], severity: "high" | "medium" | "all") {
+    setAcceptedSuggestions(findings);
+    setExportMode("handoff");
+    setPhase("export");
+  }
+
+  // Handler for review request from AnalysisSummary
+  function handleReviewRequest() {
     setPhase("review");
   }
 
+  // Handler for export-only from AnalysisSummary
+  function handleExportOnly(findings: FileSuggestion[]) {
+    setAcceptedSuggestions(findings);
+    setExportMode("export-only");
+    setPhase("export");
+  }
+
+  // Handler for passing findings from ReviewBrowser
+  function handlePassFromReview(findings: FileSuggestion[]) {
+    setAcceptedSuggestions(findings);
+    setExportMode("handoff");
+    setPhase("export");
+  }
+
+  // Handler to go back to summary from export
+  function handleBackToSummary() {
+    setPhase("summary");
+  }
+
+  // Legacy handler (for old ReviewPanel - keeping for backwards compatibility)
   function handleReviewComplete(accepted: FileSuggestion[]) {
     setAcceptedSuggestions(accepted);
+    setExportMode("handoff");
     setPhase("export");
   }
 
@@ -349,11 +432,15 @@ function App({
     switch (phase) {
       case "start":
         return currentModelDisplay;
+      case "onboarding":
+        return "Initial Setup";
       case "ask":
       case "ask-input":
         return "Ask a Question";
+      case "summary":
+        return "Analysis Summary";
       case "review":
-        return "Review Analysis Results";
+        return "Review Findings";
       case "export":
         return "Exporting Results";
       default:
@@ -374,6 +461,10 @@ function App({
         <Logo subtitle={getSubtitle()} message={repoSummary} />
 
         {/* Phase-specific content */}
+        {phase === "onboarding" && (
+          <AgentOnboarding onComplete={handleOnboardingComplete} />
+        )}
+
         {phase === "start" && (
           <StartMenu
             onRunScan={async () => {
@@ -406,6 +497,7 @@ function App({
               setPhase("handoff-settings");
             }}
             onExit={() => setPhase("complete")}
+            configuredAgent={configuredAgent}
           />
         )}
 
@@ -466,19 +558,33 @@ function App({
           />
         )}
 
-        {phase === "review" && analysisResult && (
-          <ReviewPanel
+        {phase === "summary" && analysisResult && (
+          <AnalysisSummary
             result={analysisResult}
-            onComplete={handleReviewComplete}
+            onPassFindings={handlePassFindings}
+            onReview={handleReviewRequest}
+            onExportOnly={handleExportOnly}
+            onBack={() => setPhase("start")}
+          />
+        )}
+
+        {phase === "review" && analysisResult && (
+          <ReviewBrowser
+            result={analysisResult}
+            onPassFindings={handlePassFromReview}
+            onBack={() => setPhase("summary")}
           />
         )}
 
         {phase === "export" && (
           <ExportPanel
             suggestions={acceptedSuggestions}
+            mode={exportMode}
             onComplete={handleExportComplete}
             onHandoff={handleHandoff}
             onConfigureHandoff={handleConfigureHandoff}
+            onBackToSummary={handleBackToSummary}
+            onReview={handleReviewRequest}
           />
         )}
 
@@ -499,12 +605,12 @@ function App({
           </Box>
         )}
 
-        {/* Keyboard shortcuts footer (show on most phases, but not review which has its own) */}
-        {phase !== "complete" && phase !== "init" && phase !== "review" && (
+        {/* Keyboard shortcuts footer (show on most phases, but not review/summary which have their own) */}
+        {phase !== "complete" && phase !== "init" && phase !== "review" && phase !== "summary" && (
           <Box marginTop={1}>
             <Text color="#a6adc8" dimColor>
-              {phase !== "start" && "esc (back) · "}
-              {phase !== "start" && "o (start over) · "}z (exit)
+              {phase !== "start" && phase !== "onboarding" && "esc (back) · "}
+              {phase !== "start" && phase !== "onboarding" && "o (start over) · "}z (exit)
             </Text>
           </Box>
         )}
@@ -589,12 +695,13 @@ program
     renderFullscreen(
       <Box flexDirection="column">
         <Logo subtitle="Review Previous Results" />
-        <ReviewPanel
+        <ReviewBrowser
           result={report.analysis}
-          onComplete={(accepted) => {
-            console.log(`Accepted ${accepted.length} suggestions`);
+          onPassFindings={(accepted) => {
+            console.log(`Passing ${accepted.length} findings`);
             process.exit(0);
           }}
+          onBack={() => process.exit(0)}
         />
       </Box>,
     );
@@ -617,6 +724,7 @@ program
         <Logo subtitle="Exporting Results" />
         <ExportPanel
           suggestions={report.analysis.suggestions}
+          mode="export-only"
           onComplete={() => process.exit(0)}
         />
       </Box>,
