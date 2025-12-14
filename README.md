@@ -23,7 +23,7 @@ Open-source • Local-first • Use as-is
 
 - [Why Churn?](#why-churn)
 - [What Churn Finds](#what-churn-finds)
-- [What's New in v2.1](#whats-new-in-v21)
+- [What's New in v2.2](#whats-new-in-v22)
 - [Quick Start](#quick-start)
 - [Features](#features)
 - [Installation](#installation)
@@ -85,65 +85,33 @@ Churn gives you **actionable insights**, not just observations. Every finding in
 
 ---
 
-## What's New in v2.1.6
+## What's New in v2.2
 
-**Agent Handoff System** - Version 2.1.6 introduces seamless integration with AI coding agents:
+**Streamlined Review Flow** - Version 2.2 replaces the tedious checkbox review with a scannable summary and one-decision handoff:
 
-**New in v2.1.6**
+**New in v2.2.4**
+- **Dynamic Version Reading** - Version now read dynamically from package.json
+- **Bug Fixes** - Various stability improvements
+
+**New in v2.2.0-2.2.1**
+- **AnalysisSummary Screen** - Post-analysis view with severity breakdown (HIGH/MEDIUM/LOW), progress bars, and category stats
+- **ReviewBrowser** - Tree-based finding browser with exclude mode (everything included by default)
+- **Quick Handoff Actions** - [H] Pass HIGH only, [M] Pass HIGH+MED, [A] Pass ALL, [R] Review first, [E] Export only
+- **AgentOnboarding** - First-run agent configuration as part of init sequence
+- **Dynamic Model Updates** - Models can be updated without releasing new CLI versions via remote manifest
+
+**Agent Handoff System (v2.1.6+)**
 - **Interactive Handoff** - After export, prompt to launch your configured agent immediately
-- **Agent Support** - Claude Code, Cursor, Gemini CLI, and Codex integration
+- **Agent Support** - Claude Code, Cursor, Gemini CLI, Droid, and Codex integration
 - **Context Formats** - Minimal (MD+JSON) or Comprehensive (MD+JSON+patch+metadata)
-- **Enhanced `churn pass`** - New `--launch` flag to start agents directly
-- **Settings UI** - Press 'C' during handoff prompt to configure preferences
+- **Enhanced `churn pass`** - `--launch` flag to start agents directly
 - **Workflow Integration** - Analyze with Churn → Hand off to agent → Implement changes
 
-**Previous Performance Improvements (v2.1.5)** 
+**Performance & Stability (v2.1.5+)**
 - **60-70% faster analysis** - 117 files: 8 minutes → 2-3 minutes
-- Fixed broken retry mechanism that prevented proper API error recovery
-- Reduced timeout from 120s → 45s for faster failure detection
-- Increased concurrency: Anthropic/OpenAI/Google from 8-10 → 15 concurrent files
-- JSON extraction reduces parsing failures
-- UI components now prioritized in analysis queue
-- Fixed ReviewPanel input handler instability (missed in v2.1.4)
-- Adaptive viewport sizing based on terminal height (10-25 items vs hardcoded 10)
-
-**Better Error Handling (v2.1.5)** 
-- Separated API errors from JSON parsing errors
-- Detailed analysis summary shows success/failure breakdown
-- Clear distinction: "API error" (will retry) vs "JSON parsing error" (won't retry)
-- Tracks parsing errors vs network errors separately
-
-**Rebranding & Narrative Refinement (v2.1.3)**
-- Repositioned from "AI-assisted tool" to "context intelligence layer for AI agents"
-- Emphasizes role as infrastructure and substrate for AI workflows
-- Updated messaging: "Your agents favorite context layer"
-- Reframed UI terminology: "Findings" instead of "Suggestions"
-- No functional changes - purely narrative and positioning updates
-
-**API Key Management & Global Shortcuts (v2.1.2)**
-- View last 4 characters of saved API keys for verification
-- Press 'r' to replace/update API keys in model selection screen
-- Global keyboard shortcuts work on every screen (z=exit, o=start over, esc=back)
-- Persistent model selection remembers last used model per provider
-- Better error messages guide users to solutions for auth and rate limit errors
-
-**Adaptive Prompts (v2.1.0)**
-- Language-specific analysis tailored to TypeScript/React, Python, Rust, Go, and more
-- Framework detection (Next.js, React, FastAPI, Django) for context-aware findings
-- Smart config file handling (0-2 findings max, security-focused)
-- Real-time token tracking and cost estimation
-- 30-50% token reduction through focused, relevant prompts
-
-**Differential Analysis (v2.1.1)**
-- Staged mode now analyzes only changed lines, not entire files
-- 70-90% token reduction for `churn run --staged` workflow
-- Perfect for pre-commit checks and pull request reviews
-- Automatic fallback to full analysis when needed
-
-**Stability Improvements (v2.0.13)**
-- Fixed infinite re-rendering bug in analysis summary
-- Clean, single-render completion screen
-- Rock-solid analysis execution
+- Fixed retry mechanism for proper API error recovery
+- Adaptive viewport sizing based on terminal height
+- Fullscreen TUI mode with responsive layouts (v2.1.8)
 
 **See [CHANGELOG.md](./CHANGELOG.md) for complete version history.**
 
@@ -423,7 +391,7 @@ Churn includes global keyboard shortcuts that work on every screen (added in v2.
 
 ```json
 {
-  "version": "2.1.5",
+  "version": "2.2.4",
   "apiKeys": {
     "anthropic": "sk-ant-...",
     "openai": "sk-...",

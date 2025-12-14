@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.4] - 2025-12-13
+
+### Fixed
+- **Dynamic Version:** Version now read dynamically from package.json instead of hardcoded
+- Build and stability improvements
+
+## [2.2.3] - 2025-12-12
+
+### Fixed
+- **Version Display:** Updated hardcoded version references
+
+## [2.2.2] - 2025-12-11
+
+### Changed
+- npm version bump for publishing
+
 ## [2.2.1] - 2025-12-09
 
 ### Added
