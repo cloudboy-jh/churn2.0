@@ -5,6 +5,9 @@ import { withFullScreen, useScreenSize, FullScreenBox } from "fullscreen-ink";
 import TextInput from "ink-text-input";
 import { Command } from "commander";
 import path from "path";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const packageJson = require("../package.json");
 import { Logo } from "./components/Logo.js";
 import { ModelSelect } from "./components/ModelSelect.js";
 import { RunConsole } from "./components/RunConsole.js";
@@ -625,7 +628,7 @@ const program = new Command();
 program
   .name("churn")
   .description("Context intelligence layer for AI agents and code workflows")
-  .version("2.2.3");
+  .version(packageJson.version);
 
 program
   .command("model")
