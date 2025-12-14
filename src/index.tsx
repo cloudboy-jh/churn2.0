@@ -625,7 +625,7 @@ const program = new Command();
 program
   .name("churn")
   .description("Context intelligence layer for AI agents and code workflows")
-  .version("2.2.2");
+  .version("2.2.3");
 
 program
   .command("model")
