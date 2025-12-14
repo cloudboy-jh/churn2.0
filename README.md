@@ -89,6 +89,13 @@ Churn gives you **actionable insights**, not just observations. Every finding in
 
 **Streamlined Review Flow** - Version 2.2 replaces the tedious checkbox review with a scannable summary and one-decision handoff:
 
+**New in v2.2.5**
+- **Security Fixes** - Fixed command injection vulnerabilities in differential analysis and agent handoff
+- **Race Condition Fix** - Fixed cache corruption during parallel file analysis
+- **Memory Leak Fixes** - Fixed setTimeout cleanup in ModelSelect and AskConsole components
+- **Performance** - Pre-computed gradient logo, parallel file operations, metadata caching
+- **Error Handling** - Comprehensive error handling across all components with user-friendly messages
+
 **New in v2.2.4**
 - **Dynamic Version Reading** - Version now read dynamically from package.json
 - **Bug Fixes** - Various stability improvements
@@ -391,7 +398,7 @@ Churn includes global keyboard shortcuts that work on every screen (added in v2.
 
 ```json
 {
-  "version": "2.2.4",
+  "version": "2.2.5",
   "apiKeys": {
     "anthropic": "sk-ant-...",
     "openai": "sk-...",

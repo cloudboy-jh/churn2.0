@@ -5,6 +5,12 @@ import type { FileSuggestion } from "./analysis.js";
 import type { ChurnReport } from "./reports.js";
 import type { AgentType, ContextFormat } from "./config.js";
 
+// Helper function to escape shell arguments safely
+function escapeShellArg(arg: string): string {
+  // Use single quotes and escape any single quotes in the string
+  return "'" + arg.replace(/'/g, "'\\''") + "'";
+}
+
 export interface HandoffPackage {
   files: string[];
   summary: string;
@@ -26,8 +32,8 @@ class ClaudeCodeAdapter implements AgentAdapter {
   buildCommand(files: string[], cwd: string): string {
     // Claude Code can accept files as arguments
     // Example: claude file1.md file2.json
-    const fileArgs = files.map((f) => `"${f}"`).join(" ");
-    return `cd "${cwd}" && claude ${fileArgs}`;
+    const fileArgs = files.map((f) => escapeShellArg(f)).join(" ");
+    return `cd ${escapeShellArg(cwd)} && claude ${fileArgs}`;
   }
 
   getStartupPrompt(): string {
@@ -40,8 +46,8 @@ class CursorAdapter implements AgentAdapter {
   buildCommand(files: string[], cwd: string): string {
     // Cursor CLI can open files
     // Example: cursor file1.md file2.json
-    const fileArgs = files.map((f) => `"${f}"`).join(" ");
-    return `cd "${cwd}" && cursor ${fileArgs}`;
+    const fileArgs = files.map((f) => escapeShellArg(f)).join(" ");
+    return `cd ${escapeShellArg(cwd)} && cursor ${fileArgs}`;
   }
 }
 
@@ -50,8 +56,8 @@ class GeminiAdapter implements AgentAdapter {
   buildCommand(files: string[], cwd: string): string {
     // Gemini CLI may accept files or context
     // This is a placeholder - adjust based on actual Gemini CLI
-    const fileArgs = files.map((f) => `"${f}"`).join(" ");
-    return `cd "${cwd}" && gemini ${fileArgs}`;
+    const fileArgs = files.map((f) => escapeShellArg(f)).join(" ");
+    return `cd ${escapeShellArg(cwd)} && gemini ${fileArgs}`;
   }
 }
 
@@ -60,8 +66,8 @@ class CodexAdapter implements AgentAdapter {
   buildCommand(files: string[], cwd: string): string {
     // Codex CLI interface
     // This is a placeholder - adjust based on actual Codex CLI
-    const fileArgs = files.map((f) => `"${f}"`).join(" ");
-    return `cd "${cwd}" && codex ${fileArgs}`;
+    const fileArgs = files.map((f) => escapeShellArg(f)).join(" ");
+    return `cd ${escapeShellArg(cwd)} && codex ${fileArgs}`;
   }
 }
 
@@ -70,7 +76,7 @@ class DroidAdapter implements AgentAdapter {
   buildCommand(files: string[], cwd: string): string {
     // Droid is interactive and doesn't accept file args at startup
     // Launch in the project directory - user references .churn/patches/ manually
-    return `cd "${cwd}" && droid`;
+    return `cd ${escapeShellArg(cwd)} && droid`;
   }
 
   getStartupPrompt(): string {
@@ -239,6 +245,12 @@ async function generatePatchFile(
           const startLine = suggestion.code.startLine - 1;
           const endLine = suggestion.code.endLine;
 
+          // Validate line indices
+          if (startLine < 0 || endLine > lines.length) {
+            console.warn(`Warning: Invalid line range for ${file}: ${startLine + 1}-${endLine}`);
+            continue;
+          }
+
           patch += `@@ -${startLine + 1},${endLine - startLine} +${startLine + 1},${endLine - startLine} @@\n`;
 
           // Show context
@@ -264,7 +276,9 @@ async function generatePatchFile(
         }
       }
     } catch (error) {
-      // Skip files that can't be read
+      // Log warning but continue processing other files
+      console.warn(`Warning: Could not read file ${file}, skipping patch generation:`, error instanceof Error ? error.message : 'Unknown error');
+      patch += `# Could not generate patch for ${file}\n`;
     }
   }
 

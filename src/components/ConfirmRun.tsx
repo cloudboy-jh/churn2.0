@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from "react";
-import { Text, Box, useInput } from "ink";
+import { Text, Box, useInput, Key } from "ink";
 import { theme, symbols, colors } from "../theme.js";
 import { ModelConfig } from "../engine/models.js";
 import { AnalysisContext } from "../engine/analysis.js";
@@ -37,7 +37,7 @@ export function ConfirmRun({
 }: ConfirmRunProps) {
   // Memoize input handler
   const handleInput = useCallback(
-    (input: string, key: any) => {
+    (input: string, key: Key) => {
       if (input === "z") {
         process.exit(0);
       } else if (key.return) {

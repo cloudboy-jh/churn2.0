@@ -77,8 +77,9 @@ async function getFileAgeInfo(
     const firstDate = new Date(firstCommit.date);
     const lastDate = new Date(lastCommit.date);
     const now = new Date();
+    // Use firstDate (when file was created) for true code age, not lastDate
     const ageInDays = Math.floor(
-      (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24),
+      (now.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24),
     );
 
     return {

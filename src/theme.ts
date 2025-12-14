@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import gradient from "gradient-string";
+import stripAnsi from "strip-ansi";
 
 // Churn 2.0 Theme - Centered on #ff5656 (vibrant red)
 export const colors = {
@@ -139,7 +140,8 @@ export function getSeverityTheme(severity: "high" | "medium" | "low") {
 // Create a bordered box
 export function createBox(content: string, title?: string): string {
   const lines = content.split("\n");
-  const maxWidth = Math.max(...lines.map((l) => l.length));
+  // Use stripAnsi to calculate visible width, accounting for ANSI color codes
+  const maxWidth = Math.max(...lines.map((l) => stripAnsi(l).length));
   const width = maxWidth + 2;
 
   let result = "";
@@ -164,12 +166,14 @@ export function createBox(content: string, title?: string): string {
       ) + "\n";
   }
 
-  // Content lines
+  // Content lines - use visible length for proper padding
   for (const line of lines) {
+    const visibleLength = stripAnsi(line).length;
     result +=
       theme.secondary(box.vertical) +
       " " +
-      line.padEnd(maxWidth) +
+      line +
+      " ".repeat(maxWidth - visibleLength) +
       " " +
       theme.secondary(box.vertical) +
       "\n";

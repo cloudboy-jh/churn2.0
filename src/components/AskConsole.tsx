@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Text, Box } from 'ink';
 import Spinner from 'ink-spinner';
 import { theme, symbols } from '../theme.js';
@@ -17,12 +17,9 @@ export function AskConsole({ question, modelConfig, onComplete }: AskConsoleProp
   const [result, setResult] = useState<AskResult | null>(null);
   const [savedPath, setSavedPath] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    runAsk();
-  }, []);
-
-  async function runAsk() {
+  const runAsk = useCallback(async () => {
     try {
       const context: AskContext = {
         question,
@@ -42,18 +39,29 @@ export function AskConsole({ question, modelConfig, onComplete }: AskConsoleProp
       setStatus('complete');
 
       // Auto-exit after 2 seconds
-      setTimeout(() => {
+      timeoutRef.current = setTimeout(() => {
         onComplete();
       }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
       setStatus('error');
 
-      setTimeout(() => {
+      timeoutRef.current = setTimeout(() => {
         onComplete();
       }, 3000);
     }
-  }
+  }, [question, modelConfig, onComplete]);
+
+  useEffect(() => {
+    runAsk();
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [runAsk]);
 
   return (
     <Box flexDirection="column" paddingY={1}>

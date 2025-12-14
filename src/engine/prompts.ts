@@ -6,6 +6,7 @@
  */
 
 import type { Message } from "./models.js";
+import { buildDiffPrompt } from "./differential.js";
 
 // Prompt version for cache invalidation
 export const PROMPT_VERSION = "2.1.0";
@@ -551,7 +552,6 @@ export function buildPrompt(
 ): Message[] {
   // If mode is 'diff', use specialized diff prompt
   if (mode === "diff" && fileDiff) {
-    const { buildDiffPrompt } = require("./differential.js");
     const diffPromptContent = buildDiffPrompt(fileDiff, file.language);
 
     return [

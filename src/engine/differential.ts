@@ -5,7 +5,7 @@
  * Perfect for pre-commit workflow where you just want to check "did I break something?"
  */
 
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 import * as path from 'path';
 
 export interface DiffHunk {
@@ -61,7 +61,8 @@ export async function getFileDiff(
   cwd: string = process.cwd()
 ): Promise<FileDiff | null> {
   try {
-    const diffOutput = execSync(`git diff --staged --unified=3 -- "${filePath}"`, {
+    // Use execFileSync to avoid command injection vulnerabilities
+    const diffOutput = execFileSync('git', ['diff', '--staged', '--unified=3', '--', filePath], {
       cwd,
       encoding: 'utf-8',
       maxBuffer: 10 * 1024 * 1024,

@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.5] - 2025-12-13
+
+### Security
+- **Command Injection Fix:** Fixed command injection vulnerability in `differential.ts` by using `execFileSync` instead of `execSync` with template strings
+- **Command Injection Fix:** Fixed command injection in `handoff.ts` by adding `escapeShellArg()` helper for all agent adapter build commands
+
+### Fixed
+- **Race Condition:** Fixed cache corruption during parallel file analysis with new `CacheLock` class
+- **Code Age Calculation:** Fixed `codeage.ts` to use first commit date (file creation) instead of last commit date
+- **Regex State:** Fixed global regex state issue in `dependencies.ts` causing incorrect import extraction
+- **ANSI Colors:** Fixed `createBox()` in `theme.ts` to correctly calculate width with ANSI color codes
+- **ESM Compatibility:** Replaced CommonJS `require()` with ESM `import` in `prompts.ts`
+- **Memory Leak:** Fixed setTimeout not being cleaned up in `ModelSelect.tsx` and `AskConsole.tsx`
+- **React Hooks:** Fixed useCallback/useEffect dependency issues in `VirtualizedList.tsx`, `StartMenu.tsx`, `AnalysisSummary.tsx`
+- **Type Safety:** Fixed key parameter type in `ConfirmRun.tsx` to use Ink's `Key` type
+
+### Added
+- **Error Handling:** Added comprehensive error handling to `ask.ts`, `AgentOnboarding.tsx`, `HandoffSettings.tsx`, `ExportPanel.tsx`, `RunConsole.tsx`
+- **GitError Class:** Added custom error class for git operations with operation context
+- **Cache Lock:** Added mutex-like lock for thread-safe cache updates during parallel analysis
+
+### Improved
+- **Performance:** Pre-computed gradient logo in `Logo.tsx` with `React.memo` wrapper
+- **Performance:** Added file metadata cache in `grouping.ts` to avoid O(n^2) path operations
+- **Performance:** Changed sequential file checks to parallel `Promise.all` in `context.ts`
+- **Performance:** Changed sequential report loading to parallel in `reports.ts`
+- **File Counting:** Improved `countRepoFiles` with parallel traversal, symlink handling, and permission error recovery
+
 ## [2.2.4] - 2025-12-13
 
 ### Fixed

@@ -12,15 +12,18 @@ const LOGO = ` ▄████████    ▄█    █▄    ███    �
 ████████▀    ███    █▀    ████████▀    ███    ███  ▀█   █▀
                                        ███    ███          `;
 
+// Pre-compute the gradient-processed logo at module load time
+const GRADIENT_LOGO = redGradient(LOGO);
+
 interface LogoProps {
   subtitle?: string;
   message?: string;
 }
 
-export function Logo({ subtitle, message }: LogoProps) {
+export const Logo = React.memo(function Logo({ subtitle, message }: LogoProps) {
   return (
     <Box flexDirection="column" marginBottom={2} alignItems="center">
-      <Text>{redGradient(LOGO)}</Text>
+      <Text>{GRADIENT_LOGO}</Text>
       {subtitle && (
         <Box marginTop={1} justifyContent="center">
           <Text color="#a6adc8">{subtitle}</Text>
@@ -33,4 +36,4 @@ export function Logo({ subtitle, message }: LogoProps) {
       )}
     </Box>
   );
-}
+});

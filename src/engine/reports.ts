@@ -165,22 +165,27 @@ export async function loadAllReports(
 
   const reports: { path: string; report: ChurnReport; date: Date }[] = [];
 
-  for (const file of reportFiles) {
+  // Load reports in parallel for better performance
+  const loadPromises = reportFiles.map(async (file) => {
     try {
       const filePath = path.join(reportsDir, file);
-      const report = await fs.readJSON(filePath);
-      const stats = await fs.stat(filePath);
-      reports.push({
+      const [report, stats] = await Promise.all([
+        fs.readJSON(filePath),
+        fs.stat(filePath),
+      ]);
+      return {
         path: filePath,
         report,
         date: stats.mtime,
-      });
+      };
     } catch {
       // Skip corrupted files
+      return null;
     }
-  }
+  });
 
-  return reports;
+  const results = await Promise.all(loadPromises);
+  return results.filter((r): r is NonNullable<typeof r> => r !== null);
 }
 
 // Export suggestions to a specific file

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useCallback } from "react";
 import { Text, Box, useInput } from "ink";
 import { useScreenSize } from "fullscreen-ink";
 import {
@@ -89,33 +89,38 @@ export function AnalysisSummary({
   const barWidth = Math.min(30, Math.max(15, terminalWidth - 50));
 
   // Handle keyboard input
-  useInput((input, key) => {
-    const lowerInput = input.toLowerCase();
-    
-    if (lowerInput === "h") {
-      // Pass HIGH only
-      const highFindings = suggestions.filter((s) => s.severity === "high");
-      onPassFindings(highFindings, "high");
-    } else if (lowerInput === "m") {
-      // Pass HIGH + MEDIUM
-      const highMedFindings = suggestions.filter(
-        (s) => s.severity === "high" || s.severity === "medium"
-      );
-      onPassFindings(highMedFindings, "medium");
-    } else if (lowerInput === "a") {
-      // Pass ALL
-      onPassFindings(suggestions, "all");
-    } else if (lowerInput === "r") {
-      // Review first
-      onReview();
-    } else if (lowerInput === "e") {
-      // Export only
-      onExportOnly(suggestions);
-    } else if (key.escape || lowerInput === "q") {
-      // Back
-      onBack();
-    }
-  });
+  const handleInput = useCallback(
+    (input: string, key: { escape?: boolean }) => {
+      const lowerInput = input.toLowerCase();
+
+      if (lowerInput === "h") {
+        // Pass HIGH only
+        const highFindings = suggestions.filter((s) => s.severity === "high");
+        onPassFindings(highFindings, "high");
+      } else if (lowerInput === "m") {
+        // Pass HIGH + MEDIUM
+        const highMedFindings = suggestions.filter(
+          (s) => s.severity === "high" || s.severity === "medium"
+        );
+        onPassFindings(highMedFindings, "medium");
+      } else if (lowerInput === "a") {
+        // Pass ALL
+        onPassFindings(suggestions, "all");
+      } else if (lowerInput === "r") {
+        // Review first
+        onReview();
+      } else if (lowerInput === "e") {
+        // Export only
+        onExportOnly(suggestions);
+      } else if (key.escape || lowerInput === "q") {
+        // Back
+        onBack();
+      }
+    },
+    [suggestions, onPassFindings, onReview, onExportOnly, onBack]
+  );
+
+  useInput(handleInput);
 
   // Format cost
   const costDisplay = summary.estimatedCost > 0 

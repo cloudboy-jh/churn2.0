@@ -188,14 +188,21 @@ async function detectTypeAndFramework(cwd: string, context: ProjectContext): Pro
  * Detect tooling (package managers, bundlers, test frameworks, linters)
  */
 async function detectTools(cwd: string, context: ProjectContext): Promise<void> {
-  // Package managers
-  if (await fs.pathExists(path.join(cwd, 'bun.lockb'))) {
+  // Package managers - check all lockfiles in parallel
+  const [hasBun, hasPnpm, hasYarn, hasNpm] = await Promise.all([
+    fs.pathExists(path.join(cwd, 'bun.lockb')),
+    fs.pathExists(path.join(cwd, 'pnpm-lock.yaml')),
+    fs.pathExists(path.join(cwd, 'yarn.lock')),
+    fs.pathExists(path.join(cwd, 'package-lock.json')),
+  ]);
+
+  if (hasBun) {
     context.tools.packageManager = 'bun';
-  } else if (await fs.pathExists(path.join(cwd, 'pnpm-lock.yaml'))) {
+  } else if (hasPnpm) {
     context.tools.packageManager = 'pnpm';
-  } else if (await fs.pathExists(path.join(cwd, 'yarn.lock'))) {
+  } else if (hasYarn) {
     context.tools.packageManager = 'yarn';
-  } else if (await fs.pathExists(path.join(cwd, 'package-lock.json'))) {
+  } else if (hasNpm) {
     context.tools.packageManager = 'npm';
   }
 
@@ -260,24 +267,33 @@ async function detectTools(cwd: string, context: ProjectContext): Promise<void> 
     context.tools.testFramework = 'go-test';
   }
 
-  // Linters
+  // Linters - check in parallel
   if (context.type === 'javascript' || context.type === 'typescript') {
-    if (await fs.pathExists(path.join(cwd, '.eslintrc.js')) ||
-        await fs.pathExists(path.join(cwd, '.eslintrc.json')) ||
-        await fs.pathExists(path.join(cwd, 'eslint.config.js'))) {
+    const [hasEslintJs, hasEslintJson, hasEslintConfig] = await Promise.all([
+      fs.pathExists(path.join(cwd, '.eslintrc.js')),
+      fs.pathExists(path.join(cwd, '.eslintrc.json')),
+      fs.pathExists(path.join(cwd, 'eslint.config.js')),
+    ]);
+    if (hasEslintJs || hasEslintJson || hasEslintConfig) {
       context.tools.linter = 'eslint';
     }
   } else if (context.type === 'python') {
-    if (await fs.pathExists(path.join(cwd, '.pylintrc')) ||
-        await fs.pathExists(path.join(cwd, 'pylintrc'))) {
+    const [hasPylintrc, hasPylintrcAlt] = await Promise.all([
+      fs.pathExists(path.join(cwd, '.pylintrc')),
+      fs.pathExists(path.join(cwd, 'pylintrc')),
+    ]);
+    if (hasPylintrc || hasPylintrcAlt) {
       context.tools.linter = 'pylint';
     }
   } else if (context.type === 'rust') {
     // Clippy is standard with Rust
     context.tools.linter = 'clippy';
   } else if (context.type === 'go') {
-    if (await fs.pathExists(path.join(cwd, '.golangci.yml')) ||
-        await fs.pathExists(path.join(cwd, '.golangci.yaml'))) {
+    const [hasGolangciYml, hasGolangciYaml] = await Promise.all([
+      fs.pathExists(path.join(cwd, '.golangci.yml')),
+      fs.pathExists(path.join(cwd, '.golangci.yaml')),
+    ]);
+    if (hasGolangciYml || hasGolangciYaml) {
       context.tools.linter = 'golangci-lint';
     }
   }
@@ -308,13 +324,14 @@ async function detectConventions(cwd: string, context: ProjectContext): Promise<
     }
   }
 
-  // Check if project has tests
+  // Check if project has tests - check all directories in parallel
   const testDirs = ['test', 'tests', '__tests__', 'spec'];
-  for (const dir of testDirs) {
-    if (await fs.pathExists(path.join(cwd, dir))) {
-      context.conventions.hasTests = true;
-      break;
-    }
+  const testDirChecks = await Promise.all(
+    testDirs.map(dir => fs.pathExists(path.join(cwd, dir)))
+  );
+
+  if (testDirChecks.some(exists => exists)) {
+    context.conventions.hasTests = true;
   }
 
   // Also check for test files in src

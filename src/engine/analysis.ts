@@ -634,18 +634,23 @@ async function analyzeFileWithRetry(
         tokenCount = Math.ceil((content.length + 1000) / 4); // ~4 chars per token
       }
 
-      // Update cache with successful result
-      updateCache(
-        cache,
-        filePath,
-        content,
-        suggestions,
-        modelConfig,
-        cwd,
-        PROMPT_VERSION,
-        contextHash,
-        tokenCount,
-      );
+      // Update cache with successful result (thread-safe)
+      await cacheLock.acquire();
+      try {
+        updateCache(
+          cache,
+          filePath,
+          content,
+          suggestions,
+          modelConfig,
+          cwd,
+          PROMPT_VERSION,
+          contextHash,
+          tokenCount,
+        );
+      } finally {
+        cacheLock.release();
+      }
 
       return suggestions;
     } catch (error: any) {
@@ -715,6 +720,33 @@ async function analyzeFileWithRetry(
   );
   return [];
 }
+
+// Mutex-like lock for cache updates to prevent race conditions
+class CacheLock {
+  private locked = false;
+  private queue: (() => void)[] = [];
+
+  async acquire(): Promise<void> {
+    if (!this.locked) {
+      this.locked = true;
+      return;
+    }
+    return new Promise((resolve) => {
+      this.queue.push(resolve);
+    });
+  }
+
+  release(): void {
+    const next = this.queue.shift();
+    if (next) {
+      next();
+    } else {
+      this.locked = false;
+    }
+  }
+}
+
+const cacheLock = new CacheLock();
 
 // Run full analysis with parallel processing
 export async function runAnalysis(

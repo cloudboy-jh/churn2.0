@@ -85,30 +85,39 @@ export async function getRepoInfo(cwd: string = process.cwd()): Promise<RepoInfo
   };
 }
 
-// Count files in repository (excluding .git and node_modules)
-async function countRepoFiles(cwd: string): Promise<number> {
-  let count = 0;
+// Directories to exclude from file counting
+const EXCLUDE_DIRS = new Set(['.git', 'node_modules', '.next', 'dist', 'build', 'coverage']);
 
-  async function walk(dir: string): Promise<void> {
-    const entries = await fs.readdir(dir, { withFileTypes: true });
+// Count files in repository (excluding common non-source directories)
+async function countRepoFiles(cwd: string, maxFiles: number = 100000): Promise<number> {
+  async function walk(dir: string): Promise<number> {
+    try {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
 
-    for (const entry of entries) {
-      if (entry.name === '.git' || entry.name === 'node_modules') {
-        continue;
-      }
+      const tasks = entries.map(async (entry): Promise<number> => {
+        if (EXCLUDE_DIRS.has(entry.name)) return 0;
 
-      const fullPath = path.join(dir, entry.name);
+        const fullPath = path.join(dir, entry.name);
 
-      if (entry.isDirectory()) {
-        await walk(fullPath);
-      } else {
-        count++;
-      }
+        // Skip symlinks to avoid circular references
+        if (entry.isSymbolicLink()) return 0;
+
+        if (entry.isDirectory()) {
+          return walk(fullPath);
+        }
+        return entry.isFile() ? 1 : 0;
+      });
+
+      const counts = await Promise.all(tasks);
+      return counts.reduce((sum, count) => sum + count, 0);
+    } catch (error) {
+      // Handle permission errors gracefully
+      return 0;
     }
   }
 
-  await walk(cwd);
-  return count;
+  const count = await walk(cwd);
+  return Math.min(count, maxFiles);
 }
 
 // Get git status
@@ -160,6 +169,14 @@ export async function getChangedFiles(cwd: string = process.cwd()): Promise<GitF
   return Array.from(fileMap.values());
 }
 
+// Custom error class for git operations
+export class GitError extends Error {
+  constructor(message: string, public readonly operation: string, public readonly cause?: unknown) {
+    super(message);
+    this.name = 'GitError';
+  }
+}
+
 // Get diff for a file
 export async function getFileDiff(
   filePath: string,
@@ -175,7 +192,9 @@ export async function getFileDiff(
     // Fall back to working tree diff
     const workingDiff = await git.diff(['--', filePath]);
     return workingDiff;
-  } catch {
+  } catch (error) {
+    // Log error but return empty string for graceful degradation
+    console.warn(`Failed to get diff for ${filePath}:`, error instanceof Error ? error.message : 'Unknown error');
     return '';
   }
 }

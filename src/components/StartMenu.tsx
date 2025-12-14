@@ -46,13 +46,16 @@ export function StartMenu({
   );
 
   // Global exit shortcut
-  useInput((input, key) => {
-    if (input === "z") {
-      process.exit(0);
-    } else if (input === "q" || key.escape) {
-      onExit();
-    }
-  });
+  const handleInput = useCallback(
+    (input: string, key: { escape?: boolean }) => {
+      if (input === "q" || key.escape) {
+        onExit();
+      }
+    },
+    [onExit]
+  );
+
+  useInput(handleInput);
 
   // Handle selection
   const handleSelect = useCallback(

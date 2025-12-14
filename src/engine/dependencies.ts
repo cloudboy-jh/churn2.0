@@ -66,14 +66,14 @@ const NODE_BUILTINS = new Set([
   "zlib",
 ]);
 
-// Import patterns for ES6, CommonJS, and dynamic imports
-const IMPORT_PATTERNS = [
+// Import pattern sources (without global flag) to avoid shared state issues
+const IMPORT_PATTERN_SOURCES = [
   // ES6: import x from 'pkg', import { x } from 'pkg', import 'pkg', import * as x from 'pkg'
-  /import\s+(?:(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)(?:\s*,\s*(?:\{[^}]*\}|\*\s+as\s+\w+|\w+))?\s+from\s+)?['"]([^'"]+)['"]/g,
+  /import\s+(?:(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)(?:\s*,\s*(?:\{[^}]*\}|\*\s+as\s+\w+|\w+))?\s+from\s+)?['"]([^'"]+)['"]/,
   // CommonJS: require('pkg'), require("pkg")
-  /require\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+  /require\s*\(\s*['"]([^'"]+)['"]\s*\)/,
   // Dynamic import: import('pkg')
-  /import\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+  /import\s*\(\s*['"]([^'"]+)['"]\s*\)/,
 ];
 
 /**
@@ -108,9 +108,9 @@ async function parseDeclaredDependencies(
 function extractImports(content: string): string[] {
   const imports: Set<string> = new Set();
 
-  for (const pattern of IMPORT_PATTERNS) {
-    // Reset regex state
-    pattern.lastIndex = 0;
+  for (const patternSource of IMPORT_PATTERN_SOURCES) {
+    // Create a new global regex instance for each call to avoid shared state
+    const pattern = new RegExp(patternSource.source, 'g');
     let match;
     while ((match = pattern.exec(content)) !== null) {
       const importPath = match[1];

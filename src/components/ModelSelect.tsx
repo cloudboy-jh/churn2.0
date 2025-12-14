@@ -158,6 +158,8 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
     [],
   );
 
+  const [completedConfig, setCompletedConfig] = useState<ModelConfig | null>(null);
+
   const completeSelection = useCallback(
     async (model: string, key: string) => {
       if (!selectedProvider) return;
@@ -175,17 +177,22 @@ export function ModelSelect({ onComplete }: ModelSelectProps) {
           apiKey: key || undefined,
         };
 
+        setCompletedConfig(config);
         setPhase("complete");
-
-        // Use timeout ID to clean up on unmount
-        const timeoutId = setTimeout(() => onComplete(config), 500);
-        return () => clearTimeout(timeoutId);
       } catch (error) {
         console.error("Failed to complete selection:", error);
       }
     },
-    [selectedProvider, onComplete],
+    [selectedProvider],
   );
+
+  // Handle completion with proper cleanup
+  useEffect(() => {
+    if (phase === "complete" && completedConfig) {
+      const timeoutId = setTimeout(() => onComplete(completedConfig), 500);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [phase, completedConfig, onComplete]);
 
   const handleModelSelect = useCallback(
     async (item: { value: string }) => {

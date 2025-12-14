@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Text, Box, useInput } from "ink";
 import Spinner from "ink-spinner";
 import path from "path";
@@ -48,10 +48,83 @@ export function ExportPanel({
   const [handoffAgent, setHandoffAgent] = useState<AgentType>("none");
   const [agentAvailable, setAgentAvailable] = useState(false);
   const [autoLaunch, setAutoLaunch] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const performExport = useCallback(async () => {
+    const cwd = process.cwd();
+    const patchesDir = path.join(cwd, ".churn", "patches");
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+
+    const files: string[] = [];
+
+    try {
+      // Load insights from the last report
+      const lastReport = await loadLastReport(cwd);
+      const insights: ReportInsights | undefined = lastReport?.insights;
+
+      // Export as JSON
+      const jsonPath = path.join(patchesDir, `suggestions-${timestamp}.json`);
+      await exportSuggestions(suggestions, "json", jsonPath, insights);
+      files.push(jsonPath);
+
+      // Export as Markdown (includes insights sections)
+      const mdPath = path.join(patchesDir, `report-${timestamp}.md`);
+      await exportSuggestions(suggestions, "markdown", mdPath, insights);
+      files.push(mdPath);
+
+      // Generate patch file (if there are code changes)
+      const hasCodeChanges = suggestions.some((s) => s.code);
+      if (hasCodeChanges) {
+        const patchPath = path.join(patchesDir, `changes-${timestamp}.patch`);
+        await generatePatch(suggestions, patchPath, cwd);
+        files.push(patchPath);
+      }
+
+      setExportedFiles(files);
+
+      // Check handoff configuration
+      const handoffConfig = await getHandoffConfig();
+      setHandoffAgent(handoffConfig.targetAgent);
+      setAutoLaunch(handoffConfig.autoLaunch);
+
+      // Different flows based on mode
+      if (mode === "export-only") {
+        // Export-only: show files, wait for key press to return
+        setStatus("complete");
+      } else {
+        // Handoff mode: check agent configuration
+        if (handoffConfig.targetAgent === "none") {
+          // No agent configured
+          setStatus("no-agent");
+        } else {
+          // Check if agent is available
+          const available = await isAgentAvailable(handoffConfig.targetAgent);
+          setAgentAvailable(available);
+
+          if (!available) {
+            // Agent not available
+            setStatus("agent-unavailable");
+          } else if (handoffConfig.autoLaunch) {
+            // Auto-launch enabled - go directly
+            setStatus("launching");
+            if (onHandoff) {
+              onHandoff(handoffConfig.targetAgent, files);
+            }
+          } else {
+            // Show confirmation prompt
+            setStatus("handoff-prompt");
+          }
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Export failed");
+      setStatus("complete");
+    }
+  }, [suggestions, mode, onHandoff]);
 
   useEffect(() => {
     performExport();
-  }, []);
+  }, [performExport]);
 
   // Handle keyboard input based on status
   useInput((input, key) => {
@@ -114,73 +187,6 @@ export function ExportPanel({
       }
     }
   });
-
-  async function performExport() {
-    const cwd = process.cwd();
-    const patchesDir = path.join(cwd, ".churn", "patches");
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-
-    const files: string[] = [];
-
-    // Load insights from the last report
-    const lastReport = await loadLastReport(cwd);
-    const insights: ReportInsights | undefined = lastReport?.insights;
-
-    // Export as JSON
-    const jsonPath = path.join(patchesDir, `suggestions-${timestamp}.json`);
-    await exportSuggestions(suggestions, "json", jsonPath, insights);
-    files.push(jsonPath);
-
-    // Export as Markdown (includes insights sections)
-    const mdPath = path.join(patchesDir, `report-${timestamp}.md`);
-    await exportSuggestions(suggestions, "markdown", mdPath, insights);
-    files.push(mdPath);
-
-    // Generate patch file (if there are code changes)
-    const hasCodeChanges = suggestions.some((s) => s.code);
-    if (hasCodeChanges) {
-      const patchPath = path.join(patchesDir, `changes-${timestamp}.patch`);
-      await generatePatch(suggestions, patchPath, cwd);
-      files.push(patchPath);
-    }
-
-    setExportedFiles(files);
-
-    // Check handoff configuration
-    const handoffConfig = await getHandoffConfig();
-    setHandoffAgent(handoffConfig.targetAgent);
-    setAutoLaunch(handoffConfig.autoLaunch);
-
-    // Different flows based on mode
-    if (mode === "export-only") {
-      // Export-only: show files, wait for key press to return
-      setStatus("complete");
-    } else {
-      // Handoff mode: check agent configuration
-      if (handoffConfig.targetAgent === "none") {
-        // No agent configured
-        setStatus("no-agent");
-      } else {
-        // Check if agent is available
-        const available = await isAgentAvailable(handoffConfig.targetAgent);
-        setAgentAvailable(available);
-
-        if (!available) {
-          // Agent not available
-          setStatus("agent-unavailable");
-        } else if (handoffConfig.autoLaunch) {
-          // Auto-launch enabled - go directly
-          setStatus("launching");
-          if (onHandoff) {
-            onHandoff(handoffConfig.targetAgent, files);
-          }
-        } else {
-          // Show confirmation prompt
-          setStatus("handoff-prompt");
-        }
-      }
-    }
-  }
 
   // Exporting spinner
   if (status === "exporting") {
@@ -352,6 +358,12 @@ export function ExportPanel({
   // Export complete (export-only mode or fallback)
   return (
     <Box flexDirection="column" paddingY={1}>
+      {error && (
+        <Box marginBottom={1}>
+          <Text color={colors.error}>{symbols.cross} Error: {error}</Text>
+        </Box>
+      )}
+
       <Box marginBottom={1}>
         <Text color={colors.success} bold>
           {symbols.checkmark} Export Complete

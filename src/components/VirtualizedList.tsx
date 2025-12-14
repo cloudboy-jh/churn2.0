@@ -1,11 +1,11 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Text, Box, useInput } from "ink";
 import { useScreenSize } from "fullscreen-ink";
 import { theme, symbols } from "../theme.js";
 
 export interface VirtualizedListItem {
   key: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface VirtualizedListProps<T extends VirtualizedListItem> {
@@ -66,12 +66,18 @@ export function VirtualizedList<T extends VirtualizedListItem>({
   const windowEnd = Math.min(windowStart + itemsPerPage, items.length);
   const visibleItems = items.slice(windowStart, windowEnd);
 
+  // Use ref for callback to avoid re-triggering effect
+  const onSelectionChangeRef = useRef(onSelectionChange);
+  useEffect(() => {
+    onSelectionChangeRef.current = onSelectionChange;
+  }, [onSelectionChange]);
+
   // Update parent when selection changes
   useEffect(() => {
-    if (items.length > 0 && onSelectionChange) {
-      onSelectionChange(selectedIndex, items[selectedIndex]);
+    if (items.length > 0 && items[selectedIndex] && onSelectionChangeRef.current) {
+      onSelectionChangeRef.current(selectedIndex, items[selectedIndex]);
     }
-  }, [selectedIndex, items, onSelectionChange]);
+  }, [selectedIndex, items]);
 
   // Reset selection if items change
   useEffect(() => {

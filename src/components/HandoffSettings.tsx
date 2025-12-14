@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Text, Box, useInput } from "ink";
 import { theme, symbols, colors } from "../theme.js";
 import { Panel } from "./Panel.js";
@@ -79,24 +79,31 @@ export function HandoffSettings({
   const [agentIndex, setAgentIndex] = useState(0);
   const [formatIndex, setFormatIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadCurrentSettings();
   }, []);
 
   async function loadCurrentSettings() {
-    const config = await getHandoffConfig();
-    setSelectedAgent(config.targetAgent);
-    setSelectedFormat(config.contextFormat);
-    setAutoLaunch(config.autoLaunch);
+    try {
+      const config = await getHandoffConfig();
+      setSelectedAgent(config.targetAgent);
+      setSelectedFormat(config.contextFormat);
+      setAutoLaunch(config.autoLaunch);
 
-    // Set initial indexes
-    setAgentIndex(AGENTS.findIndex((a) => a.value === config.targetAgent));
-    setFormatIndex(
-      CONTEXT_FORMATS.findIndex((f) => f.value === config.contextFormat),
-    );
+      // Set initial indexes with bounds checking
+      const agentIdx = AGENTS.findIndex((a) => a.value === config.targetAgent);
+      const formatIdx = CONTEXT_FORMATS.findIndex((f) => f.value === config.contextFormat);
 
-    setLoading(false);
+      setAgentIndex(agentIdx >= 0 ? agentIdx : 0);
+      setFormatIndex(formatIdx >= 0 ? formatIdx : 0);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load settings');
+    } finally {
+      setLoading(false);
+    }
   }
 
   useInput((input, key) => {
@@ -154,19 +161,34 @@ export function HandoffSettings({
     }
   });
 
-  async function handleSave() {
-    await saveHandoffConfig({
-      targetAgent: selectedAgent,
-      contextFormat: selectedFormat,
-      autoLaunch,
-    });
-    onComplete();
-  }
+  const handleSave = useCallback(async () => {
+    try {
+      await saveHandoffConfig({
+        targetAgent: selectedAgent,
+        contextFormat: selectedFormat,
+        autoLaunch,
+      });
+      onComplete();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save settings');
+    }
+  }, [selectedAgent, selectedFormat, autoLaunch, onComplete]);
 
   if (loading) {
     return (
       <Box flexDirection="column" paddingY={1}>
         <Text color={colors.primary}>Loading settings...</Text>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box flexDirection="column" paddingY={1}>
+        <Text color={colors.error}>{symbols.cross} Error: {error}</Text>
+        <Box marginTop={1}>
+          <Text color={colors.gray}>Press ESC to go back</Text>
+        </Box>
       </Box>
     );
   }

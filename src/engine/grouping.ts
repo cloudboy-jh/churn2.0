@@ -13,6 +13,35 @@ export interface FileGroup {
   type: 'component' | 'api' | 'module' | 'standalone';
 }
 
+// Cache for parsed file metadata to avoid repeated path operations
+interface FileMetadata {
+  baseName: string;
+  dir: string;
+  ext: string;
+  fullPath: string;
+}
+
+const metadataCache = new Map<string, FileMetadata>();
+
+function getFileMetadata(file: string): FileMetadata {
+  let metadata = metadataCache.get(file);
+  if (!metadata) {
+    metadata = {
+      baseName: getBaseName(file),
+      dir: path.dirname(file),
+      ext: path.extname(file),
+      fullPath: file,
+    };
+    metadataCache.set(file, metadata);
+  }
+  return metadata;
+}
+
+// Clear cache between runs if needed
+export function clearGroupingCache(): void {
+  metadataCache.clear();
+}
+
 /**
  * Group related files together for cross-file analysis
  */
@@ -60,28 +89,26 @@ export function groupRelatedFiles(files: string[]): FileGroup[] {
 
 /**
  * Find files related to the given file
+ * Uses cached metadata to avoid repeated path.dirname/basename calls
  */
 function findRelatedFiles(file: string, allFiles: string[]): string[] {
   const related: string[] = [];
-  const baseName = getBaseName(file);
-  const dir = path.dirname(file);
-  const ext = path.extname(file);
+  const metadata = getFileMetadata(file);
 
-  if (!baseName) return related;
+  if (!metadata.baseName) return related;
 
   for (const otherFile of allFiles) {
     if (otherFile === file) continue;
 
-    const otherBaseName = getBaseName(otherFile);
-    const otherDir = path.dirname(otherFile);
+    const otherMetadata = getFileMetadata(otherFile);
 
     // Must be in same directory (or close by)
-    if (otherDir !== dir && !isCloseDirectory(dir, otherDir)) {
+    if (otherMetadata.dir !== metadata.dir && !isCloseDirectory(metadata.dir, otherMetadata.dir)) {
       continue;
     }
 
     // Check if base names match
-    if (otherBaseName === baseName) {
+    if (otherMetadata.baseName === metadata.baseName) {
       related.push(otherFile);
       continue;
     }

@@ -51,6 +51,7 @@ const AGENT_OPTIONS: AgentOption[] = [
 export function AgentOnboarding({ onComplete }: AgentOnboardingProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Build select items
   const items = useMemo(
@@ -67,19 +68,25 @@ export function AgentOnboarding({ onComplete }: AgentOnboardingProps) {
     async (item: { value: string }) => {
       if (isSubmitting) return;
       setIsSubmitting(true);
+      setError(null);
 
-      const agent = item.value as AgentType;
+      try {
+        const agent = item.value as AgentType;
 
-      // Save the configuration
-      if (agent !== "none") {
-        await saveHandoffConfig({ targetAgent: agent });
+        // Save the configuration
+        if (agent !== "none") {
+          await saveHandoffConfig({ targetAgent: agent });
+        }
+
+        // Mark onboarding as complete (even if skipped)
+        await setOnboardingComplete();
+
+        // Notify parent
+        onComplete(agent);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to save configuration");
+        setIsSubmitting(false);
       }
-
-      // Mark onboarding as complete (even if skipped)
-      await setOnboardingComplete();
-
-      // Notify parent
-      onComplete(agent);
     },
     [onComplete, isSubmitting],
   );
@@ -163,6 +170,12 @@ export function AgentOnboarding({ onComplete }: AgentOnboardingProps) {
       {isSubmitting && (
         <Box marginTop={1}>
           <Text color={colors.info}>Saving configuration...</Text>
+        </Box>
+      )}
+
+      {error && (
+        <Box marginTop={1}>
+          <Text color={colors.error}>{symbols.cross} Error: {error}</Text>
         </Box>
       )}
     </Box>

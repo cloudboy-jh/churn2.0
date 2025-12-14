@@ -80,6 +80,7 @@ export function RunConsole({
   const [waitingForConfirmation, setWaitingForConfirmation] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [generatingInsights, setGeneratingInsights] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Folder groups for display
   const [folderGroups, setFolderGroups] = useState<FolderGroup[]>([]);
@@ -124,20 +125,30 @@ export function RunConsole({
 
         // Generate and save report (includes insights)
         setGeneratingInsights(true);
-        const generatedReport = await generateReport(analysisResult);
-        setReport(generatedReport);
-        await saveReport(generatedReport);
+        try {
+          const generatedReport = await generateReport(analysisResult);
+          setReport(generatedReport);
+          await saveReport(generatedReport);
+        } catch (reportError) {
+          console.error("Failed to generate/save report:", reportError);
+          // Continue even if report generation fails
+        }
         setGeneratingInsights(false);
 
         // Wait for user confirmation instead of auto-transitioning
         setWaitingForConfirmation(true);
-      } catch (error) {
-        console.error("Analysis failed:", error);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        console.error("Analysis failed:", err);
+        setError(message);
+        // Show error state with a basic result
+        setProgress({ phase: "complete", current: 0, total: 0 });
+        setWaitingForConfirmation(true);
       }
     }
 
     runAnalysisProcess();
-  }, [hasStarted, context, modelConfig, concurrency]);
+  }, [hasStarted, context, modelConfig, concurrency, onComplete]);
 
   // Group files by folder when batch changes
   useEffect(() => {
@@ -159,6 +170,33 @@ export function RunConsole({
     box.verticalRight +
     box.horizontal.repeat(contentWidth - 2) +
     box.verticalLeft;
+
+  // Error view
+  if (error) {
+    return (
+      <Box flexDirection="column" alignItems="center" paddingY={1}>
+        <Box
+          flexDirection="column"
+          width={contentWidth}
+          borderStyle="round"
+          borderColor={colors.error}
+          paddingX={1}
+        >
+          <Box justifyContent="center" marginBottom={1}>
+            <Text color={colors.error} bold>
+              {symbols.cross} Analysis Failed
+            </Text>
+          </Box>
+          <Box justifyContent="center" marginBottom={1}>
+            <Text color={colors.text}>{error}</Text>
+          </Box>
+          <Box justifyContent="center">
+            <Text color={colors.gray}>Press any key to go back...</Text>
+          </Box>
+        </Box>
+      </Box>
+    );
+  }
 
   // In-progress view
   if (!result || progress.phase !== "complete") {

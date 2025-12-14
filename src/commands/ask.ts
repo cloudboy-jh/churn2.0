@@ -22,46 +22,58 @@ export async function processAsk(
 ): Promise<AskResult> {
   const { question, modelConfig } = context;
 
-  // Get repository context
-  const repoInfo = await getRepoInfo();
-  const repoContext = repoInfo
-    ? `Repository: ${repoInfo.name}\nBranch: ${repoInfo.branch}\nFiles: ${repoInfo.fileCount}`
-    : "No repository information available";
+  try {
+    // Get repository context - don't fail if repo info is unavailable
+    let repoContext = "No repository information available";
+    try {
+      const repoInfo = await getRepoInfo();
+      if (repoInfo) {
+        repoContext = `Repository: ${repoInfo.name}\nBranch: ${repoInfo.branch}\nFiles: ${repoInfo.fileCount}`;
+      }
+    } catch (error) {
+      // Log but don't fail - repo context is optional
+      console.warn('Failed to get repository info:', error instanceof Error ? error.message : 'Unknown error');
+    }
 
-  // Build messages
-  const messages: Message[] = [
-    {
-      role: "system",
-      content: `You are an AI assistant helping with code analysis and development questions.
+    // Build messages
+    const messages: Message[] = [
+      {
+        role: "system",
+        content: `You are an AI assistant helping with code analysis and development questions.
 
 Context:
 ${repoContext}
 
 Provide concise, accurate answers. Focus on actionable insights.`,
-    },
-    {
-      role: "user",
-      content: question,
-    },
-  ];
+      },
+      {
+        role: "user",
+        content: question,
+      },
+    ];
 
-  // Send prompt and get response
-  const answer = await sendPrompt(modelConfig, messages, {
-    onStream: onStream
-      ? (chunk) => {
-          if (!chunk.done && chunk.content) {
-            onStream(chunk.content);
+    // Send prompt and get response
+    const answer = await sendPrompt(modelConfig, messages, {
+      onStream: onStream
+        ? (chunk) => {
+            if (!chunk.done && chunk.content) {
+              onStream(chunk.content);
+            }
           }
-        }
-      : undefined,
-  });
+        : undefined,
+    });
 
-  return {
-    question,
-    answer,
-    model: `${modelConfig.provider}/${modelConfig.model}`,
-    timestamp: new Date().toISOString(),
-  };
+    return {
+      question,
+      answer,
+      model: `${modelConfig.provider}/${modelConfig.model}`,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error) {
+    throw new Error(
+      `Failed to process ask request: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
 }
 
 // Save ask session to disk
@@ -70,17 +82,30 @@ export async function saveAskSession(
   cwd: string = process.cwd(),
 ): Promise<string> {
   const reportsDir = path.join(cwd, ".churn", "reports");
-  await fs.ensureDir(reportsDir);
+
+  try {
+    await fs.ensureDir(reportsDir);
+  } catch (error) {
+    throw new Error(
+      `Failed to create reports directory at ${reportsDir}: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const filename = `ask-session-${timestamp}.json`;
   const filepath = path.join(reportsDir, filename);
 
   const session = {
-    mode: "ask",
+    mode: "ask" as const,
     ...result,
   };
 
-  await fs.writeJSON(filepath, session, { spaces: 2 });
-  return filepath;
+  try {
+    await fs.writeJSON(filepath, session, { spaces: 2 });
+    return filepath;
+  } catch (error) {
+    throw new Error(
+      `Failed to save ask session to ${filepath}: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
 }
